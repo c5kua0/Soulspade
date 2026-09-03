@@ -1,0 +1,18 @@
+name: Soulspade
+version: 1.0.0
+main: com.soulspade.Soulspade
+api-version: '1.21'
+author: Soulspade
+description: Custom Soulspade weapon with three powerful abilities.
+
+commands:
+  soulspade:
+    description: Gives the Soulspade weapon
+    usage: /soulspade
+    aliases: [ss]
+    permission: soulspade.use
+
+permissions:
+  soulspade.use:
+    description: Allows the player to use the Soulspade command
+    default: op
