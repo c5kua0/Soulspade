@@ -1,0 +1,101 @@
+# ==========================================
+# Soulspade Configuration
+# ==========================================
+
+weapon:
+  name: "&3&lSoulspade"
+
+# ==========================================
+# Skill 1 - Dash
+# ==========================================
+
+dash:
+  enabled: true
+
+  # Maximum dash distance
+  range: 10.0
+
+  # Cooldown in seconds
+  cooldown: 2.0
+
+  # Damage dealt to enemies hit by the dash
+  damage: 9.0
+
+  effects:
+    slowness:
+      enabled: true
+      duration: 5
+      amplifier: 10
+
+    weakness:
+      enabled: true
+      duration: 5
+      amplifier: 12
+
+  particles:
+    enabled: true
+    trail: "SOUL"
+    amount: 8
+
+# ==========================================
+# Skill 2 - Energy Blast
+# ==========================================
+
+energy-blast:
+  enabled: true
+
+  # Maximum blast distance
+  range: 7.0
+
+  # Cooldown in seconds
+  cooldown: 5.0
+
+  # Damage dealt by the blast
+  damage: 40.0
+
+  particles:
+    enabled: true
+    primary: "END_ROD"
+    secondary: "SOUL_FIRE_FLAME"
+    amount: 10
+
+# ==========================================
+# Skill 3 - Explosive Snowball
+# ==========================================
+
+explosive-snowball:
+  enabled: true
+
+  # Damage dealt by the explosion
+  damage: 5.0
+
+  # Explosion damage radius
+  radius: 3.0
+
+  # true = blocks will NEVER be broken
+  break-blocks: false
+
+  # Snowball has no cooldown
+  cooldown: 0.0
+
+  particles:
+    enabled: true
+    explosion: "EXPLOSION"
+    primary: "SOUL_FIRE_FLAME"
+    secondary: "END_ROD"
+
+    explosion-amount: 3
+    primary-amount: 35
+    secondary-amount: 20
+
+# ==========================================
+# Messages
+# ==========================================
+
+messages:
+  received: "&bYou received the &3&lSoulspade&b!"
+  dash-selected: "&bSoulspade: &fDash"
+  energy-selected: "&bSoulspade: &fEnergy Blast"
+  snowball-selected: "&bSoulspade: &fExplosive Snowball"
+  skill-disabled: "&cThis skill is currently disabled."
+  cooldown: "&cSkill is on cooldown!"
