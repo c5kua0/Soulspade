@@ -12,6 +12,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Arrays;
+
 public class Soulspade extends JavaPlugin implements CommandExecutor {
 
     private NamespacedKey soulspadeKey;
@@ -19,12 +21,25 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
     @Override
     public void onEnable() {
 
+        // Load config.yml
+        saveDefaultConfig();
+        reloadConfig();
+
         soulspadeKey = new NamespacedKey(this, "soulspade");
 
-        getCommand("soulspade").setExecutor(this);
+        // Register command
+        if (getCommand("soulspade") != null) {
+            getCommand("soulspade").setExecutor(this);
+        }
 
+        // Register listeners
         getServer().getPluginManager().registerEvents(
                 new SoulspadeListener(this),
+                this
+        );
+
+        getServer().getPluginManager().registerEvents(
+                new SoulspadeProjectileListener(this),
                 this
         );
 
@@ -36,24 +51,38 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         getLogger().info("Soulspade has been disabled!");
     }
 
+    // ==========================================
+    // CREATE SOULSPADE
+    // ==========================================
+
     public ItemStack createSoulspade() {
 
-        ItemStack item = new ItemStack(Material.NETHERITE_SHOVEL);
+        ItemStack item =
+                new ItemStack(Material.NETHERITE_SHOVEL);
+
         ItemMeta meta = item.getItemMeta();
 
-        meta.setDisplayName(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Soulspade");
+        String configuredName =
+                getConfig().getString(
+                        "weapon.name",
+                        "&3&lSoulspade"
+                );
 
-        meta.setLore(java.util.Arrays.asList(
-                ChatColor.GRAY + "A weapon forged with soul energy.",
+        meta.setDisplayName(color(configuredName));
+
+        meta.setLore(Arrays.asList(
+                color("&7A weapon forged with soul energy."),
                 "",
-                ChatColor.AQUA + "Skills:",
-                ChatColor.WHITE + "1. " + ChatColor.BLUE + "Dash",
-                ChatColor.WHITE + "2. " + ChatColor.AQUA + "Energy Blast",
-                ChatColor.WHITE + "3. " + ChatColor.WHITE + "Explosive Snowball",
+                color("&bSkills:"),
+                color("&f1. &9Dash"),
+                color("&f2. &bEnergy Blast"),
+                color("&f3. &fExplosive Snowball"),
                 "",
-                ChatColor.DARK_GRAY + "Use your hotbar to select a skill."
+                color("&8Select a skill using your hotbar."),
+                color("&8Right-click to cast.")
         ));
 
+        // Mark the item as Soulspade
         meta.getPersistentDataContainer().set(
                 soulspadeKey,
                 PersistentDataType.BYTE,
@@ -65,9 +94,17 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         return item;
     }
 
+    // ==========================================
+    // CHECK SOULSPADE
+    // ==========================================
+
     public boolean isSoulspade(ItemStack item) {
 
-        if (item == null || item.getType() != Material.NETHERITE_SHOVEL) {
+        if (item == null) {
+            return false;
+        }
+
+        if (item.getType() != Material.NETHERITE_SHOVEL) {
             return false;
         }
 
@@ -77,8 +114,15 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
 
         return item.getItemMeta()
                 .getPersistentDataContainer()
-                .has(soulspadeKey, PersistentDataType.BYTE);
+                .has(
+                        soulspadeKey,
+                        PersistentDataType.BYTE
+                );
     }
+
+    // ==========================================
+    // /SOULSPADE COMMAND
+    // ==========================================
 
     @Override
     public boolean onCommand(
@@ -89,23 +133,55 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
     ) {
 
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Only players can use this command.");
+
+            sender.sendMessage(
+                    "Only players can use this command."
+            );
+
             return true;
         }
 
-        player.getInventory().addItem(createSoulspade());
+        if (!player.hasPermission("soulspade.use")) {
 
-        player.sendMessage(
-                ChatColor.AQUA + "You received the " +
-                ChatColor.DARK_AQUA + "" + ChatColor.BOLD +
-                "Soulspade" +
-                ChatColor.AQUA + "!"
+            player.sendMessage(
+                    color("&cYou don't have permission to use this command.")
+            );
+
+            return true;
+        }
+
+        player.getInventory().addItem(
+                createSoulspade()
         );
+
+        String message =
+                getConfig().getString(
+                        "messages.received",
+                        "&bYou received the &3&lSoulspade&b!"
+                );
+
+        player.sendMessage(color(message));
 
         return true;
     }
 
+    // ==========================================
+    // COLOR
+    // ==========================================
+
+    private String color(String text) {
+
+        return ChatColor.translateAlternateColorCodes(
+                '&',
+                text
+        );
+    }
+
+    // ==========================================
+    // GET KEY
+    // ==========================================
+
     public NamespacedKey getSoulspadeKey() {
         return soulspadeKey;
     }
-              }
+}
