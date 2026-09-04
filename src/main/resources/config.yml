@@ -1,12 +1,4 @@
 # ==========================================
-# SOULSPADE OWNER
-# ==========================================
-
-owner:
-  enabled: true
-  name: "jayymalapoks"
-
-# ==========================================
 # Soulspade Configuration
 # ==========================================
 
@@ -14,31 +6,33 @@ weapon:
   name: "&3&lSoulspade"
 
 # ==========================================
+# SOULSPADE OWNER
+# ==========================================
+
+owner:
+  enabled: true
+  name: "Jayymalapoks"
+
+# ==========================================
 # Skill 1 - Dash
 # ==========================================
 
 dash:
   enabled: true
-
-  # Maximum dash distance
   range: 10.0
-
-  # Cooldown in seconds
-  cooldown: 2.0
-
-  # Damage dealt to enemies hit by the dash
-  damage: 9.0
+  cooldown: 3.0
+  damage: 4.0
 
   effects:
     slowness:
       enabled: true
       duration: 5
-      amplifier: 10
+      amplifier: 1
 
     weakness:
       enabled: true
       duration: 5
-      amplifier: 12
+      amplifier: 1
 
   particles:
     enabled: true
@@ -68,17 +62,9 @@ energy-blast:
 
 explosive-snowball:
   enabled: true
-
-  # Damage dealt by the explosion
-  damage: 5.0
-
-  # Explosion damage radius
+  damage: 3.0
   radius: 3.0
-
-  # true = blocks will NEVER be broken
   break-blocks: false
-
-  # Snowball has no cooldown
   cooldown: 0.0
 
   particles:
@@ -97,8 +83,9 @@ explosive-snowball:
 
 messages:
   received: "&bYou received the &3&lSoulspade&b!"
-  dash-selected: "&bSoulspade: &fDash"
-  energy-selected: "&bSoulspade: &fEnergy Blast"
-  snowball-selected: "&bSoulspade: &fExplosive Snowball"
+  owner-only: "&cOnly the Soulspade owner can use this weapon."
+  dash-selected: "&b⚔ Dash"
+  energy-selected: "&b⚡ Energy Blast"
+  snowball-selected: "&f❄ Explosive Snowball"
   skill-disabled: "&cThis skill is currently disabled."
   cooldown: "&cSkill is on cooldown!"
