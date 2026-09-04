@@ -18,27 +18,13 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 public class SoulspadeListener implements Listener {
 
     private final Soulspade plugin;
-
-    private final Map<UUID, Long> dashCooldown = new HashMap<>();
-    private final Map<UUID, Long> blastCooldown = new HashMap<>();
-
-    /*
-     * Selected skill:
-     *
-     * 1 = Dash
-     * 2 = Energy Blast
-     * 3 = Explosive Snowball
-     */
-    private final Map<UUID, Integer> selectedSkill = new HashMap<>();
 
     public SoulspadeListener(Soulspade plugin) {
         this.plugin = plugin;
@@ -56,7 +42,8 @@ public class SoulspadeListener implements Listener {
         ItemStack currentItem =
                 player.getInventory().getItemInMainHand();
 
-        // Skill selector only works while holding Soulspade
+        // Only use the skill selector while
+        // the player is holding Soulspade.
         if (!plugin.isSoulspade(currentItem)) {
             return;
         }
@@ -64,69 +51,75 @@ public class SoulspadeListener implements Listener {
         int newSlot = event.getNewSlot();
 
         // ==========================================
-        // SLOT 1 - DASH
+        // SLOT 1 = DASH
         // ==========================================
 
         if (newSlot == 0) {
 
             event.setCancelled(true);
 
-            selectedSkill.put(
+            plugin.setSelectedSkill(
                     player.getUniqueId(),
                     1
             );
 
             player.sendActionBar(
-                    color(plugin.getConfig().getString(
-                            "messages.dash-selected",
-                            "&bSoulspade: &fDash"
-                    ))
+                    color(
+                            plugin.getConfig().getString(
+                                    "messages.dash-selected",
+                                    "&b⚔ Dash"
+                            )
+                    )
             );
 
             return;
         }
 
         // ==========================================
-        // SLOT 2 - ENERGY BLAST
+        // SLOT 2 = ENERGY BLAST
         // ==========================================
 
         if (newSlot == 1) {
 
             event.setCancelled(true);
 
-            selectedSkill.put(
+            plugin.setSelectedSkill(
                     player.getUniqueId(),
                     2
             );
 
             player.sendActionBar(
-                    color(plugin.getConfig().getString(
-                            "messages.energy-selected",
-                            "&bSoulspade: &fEnergy Blast"
-                    ))
+                    color(
+                            plugin.getConfig().getString(
+                                    "messages.energy-selected",
+                                    "&b⚡ Energy Blast"
+                            )
+                    )
             );
 
             return;
         }
 
         // ==========================================
-        // SLOT 3 - EXPLOSIVE SNOWBALL
+        // SLOT 3 = EXPLOSIVE SNOWBALL
         // ==========================================
 
         if (newSlot == 2) {
 
             event.setCancelled(true);
 
-            selectedSkill.put(
+            plugin.setSelectedSkill(
                     player.getUniqueId(),
                     3
             );
 
             player.sendActionBar(
-                    color(plugin.getConfig().getString(
-                            "messages.snowball-selected",
-                            "&bSoulspade: &fExplosive Snowball"
-                    ))
+                    color(
+                            plugin.getConfig().getString(
+                                    "messages.snowball-selected",
+                                    "&f❄ Explosive Snowball"
+                            )
+                    )
             );
 
             return;
@@ -134,16 +127,19 @@ public class SoulspadeListener implements Listener {
 
         /*
          * Slots 4-9 work normally.
-         * The player can switch away from Soulspade.
+         * This lets the player switch away from
+         * Soulspade.
          */
     }
 
     // ==========================================
-    // RIGHT CLICK = CAST SKILL
+    // RIGHT CLICK = CAST SELECTED SKILL
     // ==========================================
 
     @EventHandler
-    public void onRightClick(PlayerInteractEvent event) {
+    public void onRightClick(
+            PlayerInteractEvent event
+    ) {
 
         if (event.getAction() != Action.RIGHT_CLICK_AIR &&
                 event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -152,27 +148,29 @@ public class SoulspadeListener implements Listener {
 
         Player player = event.getPlayer();
 
-        // Player must be holding Soulspade
+        // Must be holding Soulspade.
         if (!plugin.isSoulspade(
-                player.getInventory().getItemInMainHand())) {
+                player.getInventory().getItemInMainHand()
+        )) {
             return;
         }
 
-        UUID uuid = player.getUniqueId();
+        UUID uuid =
+                player.getUniqueId();
 
-        // Default skill = Dash
         int skill =
-                selectedSkill.getOrDefault(uuid, 1);
+                plugin.getSelectedSkill(uuid);
 
         if (skill == 1) {
+
             dash(player);
-        }
 
-        else if (skill == 2) {
+        } else if (skill == 2) {
+
             energyBlast(player);
-        }
 
-        else if (skill == 3) {
+        } else if (skill == 3) {
+
             explosiveSnowball(player);
         }
     }
@@ -185,24 +183,19 @@ public class SoulspadeListener implements Listener {
 
         if (!plugin.getConfig().getBoolean(
                 "dash.enabled",
-                true)) {
+                true
+        )) {
 
             sendDisabledMessage(player);
             return;
         }
 
-        UUID uuid = player.getUniqueId();
+        UUID uuid =
+                player.getUniqueId();
 
-        double cooldown =
-                plugin.getConfig().getDouble(
-                        "dash.cooldown",
-                        3.0
-                );
-
-        if (isOnCooldown(
-                dashCooldown,
-                uuid,
-                cooldown)) {
+        // Check the SAME cooldown used by
+        // SoulspadeCooldownTask.
+        if (plugin.getRemainingDashCooldown(uuid) > 0) {
 
             sendCooldownMessage(player);
             return;
@@ -220,10 +213,8 @@ public class SoulspadeListener implements Listener {
                         4.0
                 );
 
-        dashCooldown.put(
-                uuid,
-                System.currentTimeMillis()
-        );
+        // Start the shared cooldown.
+        plugin.startDashCooldown(uuid);
 
         Location start =
                 player.getLocation().clone();
@@ -239,7 +230,7 @@ public class SoulspadeListener implements Listener {
         double actualDistance = 0;
 
         // ==========================================
-        // DASH MOVEMENT
+        // DASH PATH
         // ==========================================
 
         for (
@@ -254,7 +245,7 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
-            // Stop before solid blocks
+            // Don't dash through solid blocks.
             if (location.getBlock()
                     .getType()
                     .isSolid()) {
@@ -265,12 +256,13 @@ public class SoulspadeListener implements Listener {
             actualDistance = distance;
 
             // ==========================================
-            // DASH PARTICLE TRAIL
+            // TRAIL PARTICLES
             // ==========================================
 
             if (plugin.getConfig().getBoolean(
                     "dash.particles.enabled",
-                    true)) {
+                    true
+            )) {
 
                 spawnParticle(
                         location,
@@ -306,9 +298,10 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                // Don't hit the same target twice
+                // Only hit each target once.
                 if (hitTargets.contains(
-                        target.getUniqueId())) {
+                        target.getUniqueId()
+                )) {
                     continue;
                 }
 
@@ -318,6 +311,7 @@ public class SoulspadeListener implements Listener {
 
                 // Damage
                 if (damage > 0) {
+
                     target.damage(
                             damage,
                             player
@@ -353,7 +347,7 @@ public class SoulspadeListener implements Listener {
         }
 
         // ==========================================
-        // TELEPORT TO SAFE DESTINATION
+        // TELEPORT
         // ==========================================
 
         Location destination =
@@ -371,7 +365,7 @@ public class SoulspadeListener implements Listener {
         }
 
         // ==========================================
-        // DASH SOUND
+        // SOUND
         // ==========================================
 
         player.getWorld().playSound(
@@ -390,24 +384,20 @@ public class SoulspadeListener implements Listener {
 
         if (!plugin.getConfig().getBoolean(
                 "energy-blast.enabled",
-                true)) {
+                true
+        )) {
 
             sendDisabledMessage(player);
             return;
         }
 
-        UUID uuid = player.getUniqueId();
+        UUID uuid =
+                player.getUniqueId();
 
-        double cooldown =
-                plugin.getConfig().getDouble(
-                        "energy-blast.cooldown",
-                        5.0
-                );
-
-        if (isOnCooldown(
-                blastCooldown,
-                uuid,
-                cooldown)) {
+        // Shared cooldown.
+        if (plugin.getRemainingEnergyBlastCooldown(
+                uuid
+        ) > 0) {
 
             sendCooldownMessage(player);
             return;
@@ -431,10 +421,8 @@ public class SoulspadeListener implements Listener {
                         1.0
                 );
 
-        blastCooldown.put(
-                uuid,
-                System.currentTimeMillis()
-        );
+        // Start shared cooldown.
+        plugin.startEnergyBlastCooldown(uuid);
 
         Location start =
                 player.getEyeLocation();
@@ -447,7 +435,7 @@ public class SoulspadeListener implements Listener {
                 new HashSet<>();
 
         // ==========================================
-        // ENERGY BLAST BEAM
+        // ENERGY BEAM
         // ==========================================
 
         for (
@@ -462,7 +450,7 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
-            // Stop at walls
+            // Stop at walls.
             if (location.getBlock()
                     .getType()
                     .isSolid()) {
@@ -471,12 +459,13 @@ public class SoulspadeListener implements Listener {
             }
 
             // ==========================================
-            // ENERGY PARTICLES
+            // BEAM PARTICLES
             // ==========================================
 
             if (plugin.getConfig().getBoolean(
                     "energy-blast.particles.enabled",
-                    true)) {
+                    true
+            )) {
 
                 spawnParticle(
                         location,
@@ -501,7 +490,7 @@ public class SoulspadeListener implements Listener {
             }
 
             // ==========================================
-            // DAMAGE TARGETS
+            // DAMAGE
             // ==========================================
 
             for (Entity entity :
@@ -517,14 +506,14 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                // Don't hit caster
                 if (target.equals(player)) {
                     continue;
                 }
 
-                // Don't hit same target twice
+                // Only damage each target once.
                 if (hitTargets.contains(
-                        target.getUniqueId())) {
+                        target.getUniqueId()
+                )) {
                     continue;
                 }
 
@@ -532,15 +521,15 @@ public class SoulspadeListener implements Listener {
                         target.getUniqueId()
                 );
 
-                // Massive damage
                 if (damage > 0) {
+
                     target.damage(
                             damage,
                             player
                     );
                 }
 
-                // Impact effect
+                // Impact particles
                 target.getWorld().spawnParticle(
                         Particle.EXPLOSION,
                         target.getLocation()
@@ -584,11 +573,14 @@ public class SoulspadeListener implements Listener {
     // SKILL 3 - EXPLOSIVE SNOWBALL
     // ==========================================
 
-    private void explosiveSnowball(Player player) {
+    private void explosiveSnowball(
+            Player player
+    ) {
 
         if (!plugin.getConfig().getBoolean(
                 "explosive-snowball.enabled",
-                true)) {
+                true
+        )) {
 
             sendDisabledMessage(player);
             return;
@@ -608,10 +600,18 @@ public class SoulspadeListener implements Listener {
         );
 
         snowball.setCustomNameVisible(false);
+
+        // Throw sound
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_SNOWBALL_THROW,
+                0.8f,
+                0.8f
+        );
     }
 
     // ==========================================
-    // POTION EFFECT
+    // CONFIGURED EFFECT
     // ==========================================
 
     private void applyConfiguredEffect(
@@ -688,50 +688,34 @@ public class SoulspadeListener implements Listener {
     }
 
     // ==========================================
-    // COOLDOWN CHECK
-    // ==========================================
-
-    private boolean isOnCooldown(
-            Map<UUID, Long> cooldowns,
-            UUID uuid,
-            double seconds
-    ) {
-
-        if (!cooldowns.containsKey(uuid)) {
-            return false;
-        }
-
-        long elapsed =
-                System.currentTimeMillis()
-                        - cooldowns.get(uuid);
-
-        return elapsed <
-                (long) (seconds * 1000);
-    }
-
-    // ==========================================
     // MESSAGES
     // ==========================================
 
     private void sendDisabledMessage(
-            Player player) {
+            Player player
+    ) {
 
         player.sendMessage(
-                color(plugin.getConfig().getString(
-                        "messages.skill-disabled",
-                        "&cThis skill is currently disabled."
-                ))
+                color(
+                        plugin.getConfig().getString(
+                                "messages.skill-disabled",
+                                "&cThis skill is currently disabled."
+                        )
+                )
         );
     }
 
     private void sendCooldownMessage(
-            Player player) {
+            Player player
+    ) {
 
         player.sendMessage(
-                color(plugin.getConfig().getString(
-                        "messages.cooldown",
-                        "&cSkill is on cooldown!"
-                ))
+                color(
+                        plugin.getConfig().getString(
+                                "messages.cooldown",
+                                "&cSkill is on cooldown!"
+                        )
+                )
         );
     }
 
