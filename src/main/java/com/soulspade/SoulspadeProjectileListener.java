@@ -19,29 +19,47 @@ public class SoulspadeProjectileListener implements Listener {
         this.plugin = plugin;
     }
 
+    /*
+     * ==========================================
+     * EXPLOSIVE SNOWBALL HIT
+     * ==========================================
+     */
+
     @EventHandler
-    public void onProjectileHit(ProjectileHitEvent event) {
+    public void onProjectileHit(
+            ProjectileHitEvent event
+    ) {
 
-        if (!(event.getEntity() instanceof Snowball snowball)) {
+        if (!(event.getEntity()
+                instanceof Snowball snowball)) {
             return;
         }
 
+        /*
+         * Only handle Soulspade snowballs.
+         */
         if (!"Soulspade Explosive Snowball".equals(
-                snowball.getCustomName())) {
+                snowball.getCustomName()
+        )) {
             return;
         }
 
-        Location location = snowball.getLocation();
+        Location location =
+                snowball.getLocation();
 
         Player shooter = null;
 
-        if (snowball.getShooter() instanceof Player player) {
+        if (snowball.getShooter()
+                instanceof Player player) {
+
             shooter = player;
         }
 
-        // ==========================================
-        // CONFIG
-        // ==========================================
+        /*
+         * ==========================================
+         * CONFIG
+         * ==========================================
+         */
 
         double damage =
                 plugin.getConfig().getDouble(
@@ -61,9 +79,11 @@ public class SoulspadeProjectileListener implements Listener {
                         false
                 );
 
-        // ==========================================
-        // PARTICLES
-        // ==========================================
+        /*
+         * ==========================================
+         * PARTICLES
+         * ==========================================
+         */
 
         if (plugin.getConfig().getBoolean(
                 "explosive-snowball.particles.enabled",
@@ -107,9 +127,11 @@ public class SoulspadeProjectileListener implements Listener {
             );
         }
 
-        // ==========================================
-        // SOUND
-        // ==========================================
+        /*
+         * ==========================================
+         * EXPLOSION SOUND
+         * ==========================================
+         */
 
         location.getWorld().playSound(
                 location,
@@ -118,41 +140,56 @@ public class SoulspadeProjectileListener implements Listener {
                 1.2f
         );
 
-        // ==========================================
-        // DAMAGE
-        // ==========================================
+        /*
+         * ==========================================
+         * DAMAGE NEARBY ENTITIES
+         * ==========================================
+         */
 
         for (Entity entity :
-                location.getWorld().getNearbyEntities(
-                        location,
-                        radius,
-                        radius,
-                        radius
-                )) {
+                location.getWorld()
+                        .getNearbyEntities(
+                                location,
+                                radius,
+                                radius,
+                                radius
+                        )) {
 
             if (!(entity instanceof LivingEntity target)) {
                 continue;
             }
 
-            // Don't damage shooter
+            /*
+             * Don't damage the shooter.
+             */
             if (shooter != null &&
                     target.equals(shooter)) {
                 continue;
             }
 
+            /*
+             * Damage.
+             */
             if (damage > 0) {
 
                 if (shooter != null) {
+
                     target.damage(
                             damage,
                             shooter
                     );
+
                 } else {
-                    target.damage(damage);
+
+                    target.damage(
+                            damage
+                    );
                 }
             }
 
-            // Soul explosion effect
+            /*
+             * Soul impact particles.
+             */
             target.getWorld().spawnParticle(
                     Particle.SOUL,
                     target.getLocation()
@@ -165,13 +202,11 @@ public class SoulspadeProjectileListener implements Listener {
             );
         }
 
-        // ==========================================
-        // OPTIONAL REAL EXPLOSION
-        // ==========================================
-        //
-        // Default is false.
-        // Therefore blocks are protected.
-        //
+        /*
+         * ==========================================
+         * OPTIONAL BLOCK DAMAGE
+         * ==========================================
+         */
 
         if (breakBlocks) {
 
@@ -179,18 +214,26 @@ public class SoulspadeProjectileListener implements Listener {
                     location.getX(),
                     location.getY(),
                     location.getZ(),
-                    (float) Math.min(radius, 6.0),
+                    (float) Math.min(
+                            radius,
+                            6.0
+                    ),
                     false,
                     true
             );
         }
 
+        /*
+         * Remove the snowball.
+         */
         snowball.remove();
     }
 
-    // ==========================================
-    // PARTICLE HELPER
-    // ==========================================
+    /*
+     * ==========================================
+     * PARTICLE HELPER
+     * ==========================================
+     */
 
     private void spawnParticle(
             Location location,
