@@ -19,7 +19,9 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class SoulspadeListener implements Listener {
@@ -29,10 +31,13 @@ public class SoulspadeListener implements Listener {
     private final Map<UUID, Long> dashCooldown = new HashMap<>();
     private final Map<UUID, Long> blastCooldown = new HashMap<>();
 
-    // Selected skill for each player
-    // 1 = Dash
-    // 2 = Energy Blast
-    // 3 = Explosive Snowball
+    /*
+     * Selected skill:
+     *
+     * 1 = Dash
+     * 2 = Energy Blast
+     * 3 = Explosive Snowball
+     */
     private final Map<UUID, Integer> selectedSkill = new HashMap<>();
 
     public SoulspadeListener(Soulspade plugin) {
@@ -51,14 +56,17 @@ public class SoulspadeListener implements Listener {
         ItemStack currentItem =
                 player.getInventory().getItemInMainHand();
 
-        // Only activate skill selector while holding Soulspade
+        // Skill selector only works while holding Soulspade
         if (!plugin.isSoulspade(currentItem)) {
             return;
         }
 
         int newSlot = event.getNewSlot();
 
-        // HOTBAR 1 = DASH
+        // ==========================================
+        // SLOT 1 - DASH
+        // ==========================================
+
         if (newSlot == 0) {
 
             event.setCancelled(true);
@@ -78,7 +86,10 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        // HOTBAR 2 = ENERGY BLAST
+        // ==========================================
+        // SLOT 2 - ENERGY BLAST
+        // ==========================================
+
         if (newSlot == 1) {
 
             event.setCancelled(true);
@@ -98,7 +109,10 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        // HOTBAR 3 = EXPLOSIVE SNOWBALL
+        // ==========================================
+        // SLOT 3 - EXPLOSIVE SNOWBALL
+        // ==========================================
+
         if (newSlot == 2) {
 
             event.setCancelled(true);
@@ -118,25 +132,27 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        // Slots 4-9 work normally.
-        // This allows the player to stop holding Soulspade.
+        /*
+         * Slots 4-9 work normally.
+         * The player can switch away from Soulspade.
+         */
     }
 
     // ==========================================
-    // RIGHT CLICK = CAST SELECTED SKILL
+    // RIGHT CLICK = CAST SKILL
     // ==========================================
 
     @EventHandler
     public void onRightClick(PlayerInteractEvent event) {
 
         if (event.getAction() != Action.RIGHT_CLICK_AIR &&
-            event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+                event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
 
         Player player = event.getPlayer();
 
-        // Must be holding Soulspade
+        // Player must be holding Soulspade
         if (!plugin.isSoulspade(
                 player.getInventory().getItemInMainHand())) {
             return;
@@ -150,11 +166,13 @@ public class SoulspadeListener implements Listener {
 
         if (skill == 1) {
             dash(player);
+        }
 
-        } else if (skill == 2) {
+        else if (skill == 2) {
             energyBlast(player);
+        }
 
-        } else if (skill == 3) {
+        else if (skill == 3) {
             explosiveSnowball(player);
         }
     }
@@ -190,11 +208,6 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        dashCooldown.put(
-                uuid,
-                System.currentTimeMillis()
-        );
-
         double range =
                 plugin.getConfig().getDouble(
                         "dash.range",
@@ -207,13 +220,27 @@ public class SoulspadeListener implements Listener {
                         4.0
                 );
 
+        dashCooldown.put(
+                uuid,
+                System.currentTimeMillis()
+        );
+
+        Location start =
+                player.getLocation().clone();
+
         Vector direction =
                 player.getLocation()
                         .getDirection()
                         .normalize();
 
-        Location start =
-                player.getLocation().clone();
+        Set<UUID> hitTargets =
+                new HashSet<>();
+
+        double actualDistance = 0;
+
+        // ==========================================
+        // DASH MOVEMENT
+        // ==========================================
 
         for (
                 double distance = 0;
@@ -227,13 +254,20 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
+            // Stop before solid blocks
             if (location.getBlock()
                     .getType()
                     .isSolid()) {
+
                 break;
             }
 
-            // Particle trail
+            actualDistance = distance;
+
+            // ==========================================
+            // DASH PARTICLE TRAIL
+            // ==========================================
+
             if (plugin.getConfig().getBoolean(
                     "dash.particles.enabled",
                     true)) {
@@ -250,6 +284,10 @@ public class SoulspadeListener implements Listener {
                         )
                 );
             }
+
+            // ==========================================
+            // HIT ENTITIES
+            // ==========================================
 
             for (Entity entity :
                     location.getWorld()
@@ -268,6 +306,17 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
+                // Don't hit the same target twice
+                if (hitTargets.contains(
+                        target.getUniqueId())) {
+                    continue;
+                }
+
+                hitTargets.add(
+                        target.getUniqueId()
+                );
+
+                // Damage
                 if (damage > 0) {
                     target.damage(
                             damage,
@@ -275,23 +324,43 @@ public class SoulspadeListener implements Listener {
                     );
                 }
 
+                // Slowness
                 applyConfiguredEffect(
                         target,
                         "dash.effects.slowness",
                         PotionEffectType.SLOWNESS
                 );
 
+                // Weakness
                 applyConfiguredEffect(
                         target,
                         "dash.effects.weakness",
                         PotionEffectType.WEAKNESS
                 );
+
+                // Hit particles
+                target.getWorld().spawnParticle(
+                        Particle.SOUL,
+                        target.getLocation()
+                                .add(0, 1, 0),
+                        15,
+                        0.4,
+                        0.6,
+                        0.4,
+                        0.03
+                );
             }
         }
 
+        // ==========================================
+        // TELEPORT TO SAFE DESTINATION
+        // ==========================================
+
         Location destination =
                 start.clone().add(
-                        direction.multiply(range)
+                        direction.multiply(
+                                actualDistance
+                        )
                 );
 
         if (!destination.getBlock()
@@ -300,6 +369,10 @@ public class SoulspadeListener implements Listener {
 
             player.teleport(destination);
         }
+
+        // ==========================================
+        // DASH SOUND
+        // ==========================================
 
         player.getWorld().playSound(
                 player.getLocation(),
@@ -340,11 +413,6 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        blastCooldown.put(
-                uuid,
-                System.currentTimeMillis()
-        );
-
         double range =
                 plugin.getConfig().getDouble(
                         "energy-blast.range",
@@ -357,11 +425,30 @@ public class SoulspadeListener implements Listener {
                         15.0
                 );
 
+        double hitRadius =
+                plugin.getConfig().getDouble(
+                        "energy-blast.hit-radius",
+                        1.0
+                );
+
+        blastCooldown.put(
+                uuid,
+                System.currentTimeMillis()
+        );
+
         Location start =
                 player.getEyeLocation();
 
         Vector direction =
-                start.getDirection().normalize();
+                start.getDirection()
+                        .normalize();
+
+        Set<UUID> hitTargets =
+                new HashSet<>();
+
+        // ==========================================
+        // ENERGY BLAST BEAM
+        // ==========================================
 
         for (
                 double distance = 0.5;
@@ -375,11 +462,17 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
+            // Stop at walls
             if (location.getBlock()
                     .getType()
                     .isSolid()) {
+
                 break;
             }
+
+            // ==========================================
+            // ENERGY PARTICLES
+            // ==========================================
 
             if (plugin.getConfig().getBoolean(
                     "energy-blast.particles.enabled",
@@ -407,32 +500,63 @@ public class SoulspadeListener implements Listener {
                 );
             }
 
+            // ==========================================
+            // DAMAGE TARGETS
+            // ==========================================
+
             for (Entity entity :
                     location.getWorld()
                             .getNearbyEntities(
                                     location,
-                                    1.0,
-                                    1.0,
-                                    1.0
+                                    hitRadius,
+                                    hitRadius,
+                                    hitRadius
                             )) {
 
                 if (!(entity instanceof LivingEntity target)) {
                     continue;
                 }
 
+                // Don't hit caster
                 if (target.equals(player)) {
                     continue;
                 }
 
-                target.damage(
-                        damage,
-                        player
+                // Don't hit same target twice
+                if (hitTargets.contains(
+                        target.getUniqueId())) {
+                    continue;
+                }
+
+                hitTargets.add(
+                        target.getUniqueId()
+                );
+
+                // Massive damage
+                if (damage > 0) {
+                    target.damage(
+                            damage,
+                            player
+                    );
+                }
+
+                // Impact effect
+                target.getWorld().spawnParticle(
+                        Particle.EXPLOSION,
+                        target.getLocation()
+                                .add(0, 1, 0),
+                        1
                 );
 
                 target.getWorld().spawnParticle(
-                        Particle.EXPLOSION,
-                        target.getLocation(),
-                        1
+                        Particle.END_ROD,
+                        target.getLocation()
+                                .add(0, 1, 0),
+                        20,
+                        0.5,
+                        0.7,
+                        0.5,
+                        0.05
                 );
 
                 target.getWorld().playSound(
@@ -441,10 +565,19 @@ public class SoulspadeListener implements Listener {
                         0.7f,
                         1.5f
                 );
-
-                return;
             }
         }
+
+        // ==========================================
+        // CAST SOUND
+        // ==========================================
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_EVOKER_CAST_SPELL,
+                1.0f,
+                1.2f
+        );
     }
 
     // ==========================================
@@ -460,6 +593,10 @@ public class SoulspadeListener implements Listener {
             sendDisabledMessage(player);
             return;
         }
+
+        /*
+         * No cooldown.
+         */
 
         Snowball snowball =
                 player.launchProjectile(
@@ -515,7 +652,7 @@ public class SoulspadeListener implements Listener {
     }
 
     // ==========================================
-    // PARTICLE
+    // PARTICLE HELPER
     // ==========================================
 
     private void spawnParticle(
@@ -551,7 +688,7 @@ public class SoulspadeListener implements Listener {
     }
 
     // ==========================================
-    // COOLDOWN
+    // COOLDOWN CHECK
     // ==========================================
 
     private boolean isOnCooldown(
