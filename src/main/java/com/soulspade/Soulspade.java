@@ -13,26 +13,67 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class Soulspade extends JavaPlugin implements CommandExecutor {
 
     private NamespacedKey soulspadeKey;
 
+    /*
+     * Selected skill:
+     *
+     * 1 = Dash
+     * 2 = Energy Blast
+     * 3 = Explosive Snowball
+     */
+    private final Map<UUID, Integer> selectedSkills =
+            new HashMap<>();
+
+    /*
+     * Cooldown timestamps.
+     */
+    private final Map<UUID, Long> dashCooldown =
+            new HashMap<>();
+
+    private final Map<UUID, Long> energyBlastCooldown =
+            new HashMap<>();
+
     @Override
     public void onEnable() {
 
-        // Load config.yml
+        // ==========================================
+        // CONFIG
+        // ==========================================
+
         saveDefaultConfig();
         reloadConfig();
 
-        soulspadeKey = new NamespacedKey(this, "soulspade");
+        // ==========================================
+        // SOULSPADE KEY
+        // ==========================================
 
-        // Register command
+        soulspadeKey =
+                new NamespacedKey(
+                        this,
+                        "soulspade"
+                );
+
+        // ==========================================
+        // COMMAND
+        // ==========================================
+
         if (getCommand("soulspade") != null) {
-            getCommand("soulspade").setExecutor(this);
+
+            getCommand("soulspade")
+                    .setExecutor(this);
         }
 
-        // Register listeners
+        // ==========================================
+        // LISTENERS
+        // ==========================================
+
         getServer().getPluginManager().registerEvents(
                 new SoulspadeListener(this),
                 this
@@ -43,12 +84,37 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                 this
         );
 
-        getLogger().info("Soulspade has been enabled!");
+        getServer().getPluginManager().registerEvents(
+                new SoulspadeProtectionListener(this),
+                this
+        );
+
+        // ==========================================
+        // COOLDOWN ACTION BAR
+        // ==========================================
+
+        new SoulspadeCooldownTask(this)
+                .runTaskTimer(
+                        this,
+                        0L,
+                        2L
+                );
+
+        getLogger().info(
+                "Soulspade has been enabled!"
+        );
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Soulspade has been disabled!");
+
+        selectedSkills.clear();
+        dashCooldown.clear();
+        energyBlastCooldown.clear();
+
+        getLogger().info(
+                "Soulspade has been disabled!"
+        );
     }
 
     // ==========================================
@@ -58,9 +124,16 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
     public ItemStack createSoulspade() {
 
         ItemStack item =
-                new ItemStack(Material.NETHERITE_SHOVEL);
+                new ItemStack(
+                        Material.NETHERITE_SHOVEL
+                );
 
-        ItemMeta meta = item.getItemMeta();
+        ItemMeta meta =
+                item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
 
         String configuredName =
                 getConfig().getString(
@@ -68,21 +141,29 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                         "&3&lSoulspade"
                 );
 
-        meta.setDisplayName(color(configuredName));
+        meta.setDisplayName(
+                color(configuredName)
+        );
 
         meta.setLore(Arrays.asList(
-                color("&7A weapon forged with soul energy."),
+                color(
+                        "&7A weapon forged with soul energy."
+                ),
                 "",
                 color("&bSkills:"),
                 color("&f1. &9Dash"),
                 color("&f2. &bEnergy Blast"),
                 color("&f3. &fExplosive Snowball"),
                 "",
-                color("&8Select a skill using your hotbar."),
-                color("&8Right-click to cast.")
+                color(
+                        "&8Select a skill using your hotbar."
+                ),
+                color(
+                        "&8Right-click to cast."
+                )
         ));
 
-        // Mark the item as Soulspade
+        // Mark item as Soulspade
         meta.getPersistentDataContainer().set(
                 soulspadeKey,
                 PersistentDataType.BYTE,
@@ -104,7 +185,8 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
             return false;
         }
 
-        if (item.getType() != Material.NETHERITE_SHOVEL) {
+        if (item.getType()
+                != Material.NETHERITE_SHOVEL) {
             return false;
         }
 
@@ -121,7 +203,153 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
     }
 
     // ==========================================
-    // /SOULSPADE COMMAND
+    // SELECTED SKILL
+    // ==========================================
+
+    public int getSelectedSkill(UUID uuid) {
+
+        return selectedSkills.getOrDefault(
+                uuid,
+                1
+        );
+    }
+
+    public void setSelectedSkill(
+            UUID uuid,
+            int skill
+    ) {
+
+        if (skill < 1 || skill > 3) {
+            return;
+        }
+
+        selectedSkills.put(
+                uuid,
+                skill
+        );
+    }
+
+    // ==========================================
+    // DASH COOLDOWN
+    // ==========================================
+
+    public void startDashCooldown(UUID uuid) {
+
+        dashCooldown.put(
+                uuid,
+                System.currentTimeMillis()
+        );
+    }
+
+    public long getRemainingDashCooldown(
+            UUID uuid
+    ) {
+
+        double cooldown =
+                getConfig().getDouble(
+                        "dash.cooldown",
+                        3.0
+                );
+
+        return getRemainingTime(
+                dashCooldown,
+                uuid,
+                cooldown
+        );
+    }
+
+    // ==========================================
+    // ENERGY BLAST COOLDOWN
+    // ==========================================
+
+    public void startEnergyBlastCooldown(
+            UUID uuid
+    ) {
+
+        energyBlastCooldown.put(
+                uuid,
+                System.currentTimeMillis()
+        );
+    }
+
+    public long getRemainingEnergyBlastCooldown(
+            UUID uuid
+    ) {
+
+        double cooldown =
+                getConfig().getDouble(
+                        "energy-blast.cooldown",
+                        5.0
+                );
+
+        return getRemainingTime(
+                energyBlastCooldown,
+                uuid,
+                cooldown
+        );
+    }
+
+    // ==========================================
+    // GENERIC COOLDOWN
+    // ==========================================
+
+    private long getRemainingTime(
+            Map<UUID, Long> cooldowns,
+            UUID uuid,
+            double cooldownSeconds
+    ) {
+
+        if (!cooldowns.containsKey(uuid)) {
+            return 0;
+        }
+
+        long elapsed =
+                System.currentTimeMillis()
+                        - cooldowns.get(uuid);
+
+        long cooldownMillis =
+                (long) (
+                        cooldownSeconds * 1000
+                );
+
+        long remaining =
+                cooldownMillis - elapsed;
+
+        return Math.max(
+                remaining,
+                0
+        );
+    }
+
+    // ==========================================
+    // USED BY COOLDOWN TASK
+    // ==========================================
+
+    public long getRemainingCooldown(
+            UUID uuid,
+            String skill
+    ) {
+
+        if (skill.equalsIgnoreCase("dash")) {
+
+            return getRemainingDashCooldown(
+                    uuid
+            );
+        }
+
+        if (skill.equalsIgnoreCase(
+                "energy-blast")) {
+
+            return getRemainingEnergyBlastCooldown(
+                    uuid
+            );
+        }
+
+        return 0;
+    }
+
+    // ==========================================
+    // /SOULSPADE
     // ==========================================
 
     @Override
@@ -141,10 +369,14 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("soulspade.use")) {
+        if (!player.hasPermission(
+                "soulspade.use"
+        )) {
 
             player.sendMessage(
-                    color("&cYou don't have permission to use this command.")
+                    color(
+                            "&cYou don't have permission to use this command."
+                    )
             );
 
             return true;
@@ -160,7 +392,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                         "&bYou received the &3&lSoulspade&b!"
                 );
 
-        player.sendMessage(color(message));
+        player.sendMessage(
+                color(message)
+        );
 
         return true;
     }
@@ -178,10 +412,11 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
     }
 
     // ==========================================
-    // GET KEY
+    // GET SOULSPADE KEY
     // ==========================================
 
     public NamespacedKey getSoulspadeKey() {
+
         return soulspadeKey;
     }
 }
