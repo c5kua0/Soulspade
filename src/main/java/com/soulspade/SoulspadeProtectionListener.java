@@ -19,128 +19,198 @@ public class SoulspadeProtectionListener implements Listener {
         this.plugin = plugin;
     }
 
-    // ==========================================
-    // PREVENT DROPPING
-    // ==========================================
+    /*
+     * ==========================================
+     * PREVENT DROPPING
+     * ==========================================
+     */
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
 
-        ItemStack item = event.getItemDrop().getItemStack();
+        ItemStack item =
+                event.getItemDrop().getItemStack();
 
-        if (plugin.isSoulspade(item)) {
-            event.setCancelled(true);
-        }
-    }
-
-    // ==========================================
-    // PREVENT PUTTING INTO CONTAINERS
-    // ==========================================
-
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-
-        if (!(event.getWhoClicked() instanceof Player player)) {
+        if (!plugin.isSoulspade(item)) {
             return;
         }
 
-        ItemStack current = event.getCurrentItem();
-        ItemStack cursor = event.getCursor();
+        event.setCancelled(true);
 
-        // Soulspade being moved from its inventory slot
+        event.getPlayer().sendActionBar(
+                "§cThe Soulspade cannot be dropped!"
+        );
+    }
+
+    /*
+     * ==========================================
+     * PREVENT INVENTORY MOVEMENT
+     * ==========================================
+     */
+
+    @EventHandler
+    public void onInventoryClick(
+            InventoryClickEvent event
+    ) {
+
+        if (!(event.getWhoClicked()
+                instanceof Player player)) {
+            return;
+        }
+
+        ItemStack current =
+                event.getCurrentItem();
+
+        ItemStack cursor =
+                event.getCursor();
+
+        /*
+         * Soulspade in the clicked slot.
+         */
         if (plugin.isSoulspade(current)) {
 
-            // Allow normal inventory movement only.
-            // Prevent moving it into another inventory.
-            if (event.getClickedInventory() != null
-                    && event.getView().getTopInventory()
-                    != event.getClickedInventory()) {
-
-                return;
-            }
-
             event.setCancelled(true);
+
+            player.sendActionBar(
+                    "§cThe Soulspade cannot be moved!"
+            );
+
             return;
         }
 
-        // Soulspade being placed into a container
+        /*
+         * Soulspade on the cursor.
+         */
         if (plugin.isSoulspade(cursor)) {
+
             event.setCancelled(true);
+
+            player.sendActionBar(
+                    "§cThe Soulspade cannot be moved!"
+            );
         }
     }
 
-    // ==========================================
-    // PREVENT INVENTORY DRAGGING
-    // ==========================================
+    /*
+     * ==========================================
+     * PREVENT INVENTORY DRAGGING
+     * ==========================================
+     */
 
     @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
+    public void onInventoryDrag(
+            InventoryDragEvent event
+    ) {
 
-        if (plugin.isSoulspade(event.getOldCursor())) {
+        /*
+         * Soulspade already on cursor.
+         */
+        if (plugin.isSoulspade(
+                event.getOldCursor()
+        )) {
+
             event.setCancelled(true);
             return;
         }
 
-        for (ItemStack item : event.getNewItems().values()) {
+        /*
+         * Soulspade being dragged into slots.
+         */
+        for (ItemStack item :
+                event.getNewItems().values()) {
 
             if (plugin.isSoulspade(item)) {
+
                 event.setCancelled(true);
                 return;
             }
         }
     }
 
-    // ==========================================
-    // PREVENT PLACING
-    // ==========================================
+    /*
+     * ==========================================
+     * PREVENT BLOCK PLACEMENT
+     * ==========================================
+     */
 
     @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event) {
+    public void onBlockPlace(
+            BlockPlaceEvent event
+    ) {
 
-        if (plugin.isSoulspade(
-                event.getItemInHand())) {
-
-            event.setCancelled(true);
+        if (!plugin.isSoulspade(
+                event.getItemInHand()
+        )) {
+            return;
         }
+
+        event.setCancelled(true);
+
+        event.getPlayer().sendActionBar(
+                "§cThe Soulspade cannot be placed!"
+        );
     }
 
-    // ==========================================
-    // PREVENT PICKUP OF DROPPED SOULSPADE
-    // ==========================================
-    //
-    // This is mainly a safety check in case an
-    // external plugin creates a Soulspade drop.
-    //
+    /*
+     * ==========================================
+     * PREVENT PICKUP
+     * ==========================================
+     */
 
     @EventHandler
-    public void onPickup(EntityPickupItemEvent event) {
+    public void onPickup(
+            EntityPickupItemEvent event
+    ) {
 
-        if (event.getEntity() instanceof Player player) {
-
-            ItemStack item =
-                    event.getItem().getItemStack();
-
-            if (plugin.isSoulspade(item)) {
-
-                // Soulspade should never normally
-                // exist as a dropped item.
-                event.setCancelled(true);
-            }
+        if (!(event.getEntity()
+                instanceof Player player)) {
+            return;
         }
+
+        ItemStack item =
+                event.getItem().getItemStack();
+
+        if (!plugin.isSoulspade(item)) {
+            return;
+        }
+
+        /*
+         * Prevent anyone from picking up
+         * a dropped Soulspade.
+         *
+         * This keeps the weapon bound to
+         * the original owner.
+         */
+        event.setCancelled(true);
+
+        player.sendActionBar(
+                "§cThe Soulspade belongs to its owner!"
+        );
     }
 
-    // ==========================================
-    // PREVENT SPAWNING SOULSPADE AS DROPPED ITEM
-    // ==========================================
+    /*
+     * ==========================================
+     * REMOVE DROPPED SOULSPADE
+     * ==========================================
+     *
+     * Extra protection:
+     * if a Soulspade somehow becomes an
+     * ItemEntity, remove it instead of
+     * allowing it to remain on the ground.
+     */
 
     @EventHandler
-    public void onItemSpawn(ItemSpawnEvent event) {
+    public void onItemSpawn(
+            ItemSpawnEvent event
+    ) {
 
         ItemStack item =
                 event.getEntity().getItemStack();
 
-        if (plugin.isSoulspade(item)) {
-            event.getEntity().remove();
+        if (!plugin.isSoulspade(item)) {
+            return;
         }
+
+        event.getEntity().remove();
     }
 }
