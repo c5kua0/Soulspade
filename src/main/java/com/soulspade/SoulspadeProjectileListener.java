@@ -43,20 +43,23 @@ public class SoulspadeProjectileListener implements Listener {
         // CONFIG
         // ==========================================
 
-        double damage = plugin.getConfig().getDouble(
-                "explosive-snowball.damage",
-                3.0
-        );
+        double damage =
+                plugin.getConfig().getDouble(
+                        "explosive-snowball.damage",
+                        3.0
+                );
 
-        double radius = plugin.getConfig().getDouble(
-                "explosive-snowball.radius",
-                3.0
-        );
+        double radius =
+                plugin.getConfig().getDouble(
+                        "explosive-snowball.radius",
+                        3.0
+                );
 
-        boolean breakBlocks = plugin.getConfig().getBoolean(
-                "explosive-snowball.break-blocks",
-                false
-        );
+        boolean breakBlocks =
+                plugin.getConfig().getBoolean(
+                        "explosive-snowball.break-blocks",
+                        false
+                );
 
         // ==========================================
         // PARTICLES
@@ -131,29 +134,43 @@ public class SoulspadeProjectileListener implements Listener {
                 continue;
             }
 
-            // Don't damage the person who threw it
-            if (shooter != null && target.equals(shooter)) {
+            // Don't damage shooter
+            if (shooter != null &&
+                    target.equals(shooter)) {
                 continue;
             }
 
             if (damage > 0) {
 
                 if (shooter != null) {
-                    target.damage(damage, shooter);
+                    target.damage(
+                            damage,
+                            shooter
+                    );
                 } else {
                     target.damage(damage);
                 }
             }
+
+            // Soul explosion effect
+            target.getWorld().spawnParticle(
+                    Particle.SOUL,
+                    target.getLocation()
+                            .add(0, 1, 0),
+                    12,
+                    0.4,
+                    0.6,
+                    0.4,
+                    0.03
+            );
         }
 
         // ==========================================
-        // OPTIONAL BLOCK EXPLOSION
+        // OPTIONAL REAL EXPLOSION
         // ==========================================
         //
-        // Default config is false.
-        //
-        // If true, blocks can be destroyed.
-        // If false, NO blocks are destroyed.
+        // Default is false.
+        // Therefore blocks are protected.
         //
 
         if (breakBlocks) {
@@ -183,9 +200,10 @@ public class SoulspadeProjectileListener implements Listener {
 
         try {
 
-            Particle particle = Particle.valueOf(
-                    particleName.toUpperCase()
-            );
+            Particle particle =
+                    Particle.valueOf(
+                            particleName.toUpperCase()
+                    );
 
             location.getWorld().spawnParticle(
                     particle,
