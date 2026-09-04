@@ -16,4 +16,4 @@ commands:
 permissions:
   soulspade.use:
     description: Allows the player to use the Soulspade command
-    default: true
+    default: op
