@@ -21,19 +21,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
 
     private NamespacedKey soulspadeKey;
 
-    /*
-     * Selected skill:
-     *
-     * 1 = Dash
-     * 2 = Energy Blast
-     * 3 = Explosive Snowball
-     */
     private final Map<UUID, Integer> selectedSkills =
             new HashMap<>();
 
-    /*
-     * Cooldown timestamps.
-     */
     private final Map<UUID, Long> dashCooldown =
             new HashMap<>();
 
@@ -389,7 +379,10 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         }
 
         /*
-         * OWNER CHECK
+         * ONLY THE OWNER CAN USE /SOULSPADE
+         *
+         * This check happens BEFORE the
+         * permission check.
          */
         if (!isOwner(player)) {
 
@@ -407,24 +400,10 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         }
 
         /*
-         * PERMISSION CHECK
+         * OWNER DOES NOT NEED OP OR
+         * soulspade.use PERMISSION.
          */
-        if (!player.hasPermission(
-                "soulspade.use"
-        )) {
 
-            player.sendMessage(
-                    color(
-                            "&cYou don't have permission to use this command."
-                    )
-            );
-
-            return true;
-        }
-
-        /*
-         * GIVE SOULSPADE
-         */
         player.getInventory().addItem(
                 createSoulspade()
         );
