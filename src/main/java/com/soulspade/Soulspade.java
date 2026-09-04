@@ -6,7 +6,10 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class Soulspade extends JavaPlugin {
 
     private NamespacedKey soulspadeKey;
+    private NamespacedKey attackDamageKey;
 
     private final Map<UUID, Integer> selectedSkills = new HashMap<>();
     private final Map<UUID, Long> dashCooldown = new HashMap<>();
@@ -34,6 +38,11 @@ public class Soulspade extends JavaPlugin {
         soulspadeKey = new NamespacedKey(
                 this,
                 "soulspade"
+        );
+
+        attackDamageKey = new NamespacedKey(
+                this,
+                "soulspade_attack_damage"
         );
 
         registerSoulspadeCommands();
@@ -116,13 +125,13 @@ public class Soulspade extends JavaPlugin {
 
         if (!isOwner(player)) {
 
-            String message = getConfig().getString(
-                    "messages.owner-only",
-                    "&cOnly the Soulspade owner can use this weapon."
-            );
-
             player.sendMessage(
-                    color(message)
+                    color(
+                            getConfig().getString(
+                                    "messages.owner-only",
+                                    "&cOnly the Soulspade owner can use this weapon."
+                            )
+                    )
             );
 
             return;
@@ -132,13 +141,13 @@ public class Soulspade extends JavaPlugin {
                 createSoulspade()
         );
 
-        String message = getConfig().getString(
-                "messages.received",
-                "&bYou received the &3&lSoulspade&b!"
-        );
-
         player.sendMessage(
-                color(message)
+                color(
+                        getConfig().getString(
+                                "messages.received",
+                                "&bYou received the &3&lSoulspade&b!"
+                        )
+                )
         );
     }
 
@@ -194,27 +203,45 @@ public class Soulspade extends JavaPlugin {
         );
 
         meta.setLore(Arrays.asList(
-                color(
-                        "&7A weapon forged with soul energy."
-                ),
+                color("&7A weapon forged with soul energy."),
                 "",
                 color("&bSkills:"),
                 color("&f1. &9Dash"),
                 color("&f2. &bEnergy Blast"),
                 color("&f3. &fExplosive Snowball"),
                 "",
-                color(
-                        "&8Select a skill using your hotbar."
-                ),
-                color(
-                        "&8Right-click to cast."
-                )
+                color("&d✦ 20% Lifesteal"),
+                color("&c✦ 20 Attack Damage"),
+                "",
+                color("&8Select a skill using your hotbar."),
+                color("&8Right-click to cast.")
         ));
+
+        // =====================================================
+        // SOULSPADE IDENTIFIER
+        // =====================================================
 
         meta.getPersistentDataContainer().set(
                 soulspadeKey,
                 PersistentDataType.BYTE,
                 (byte) 1
+        );
+
+        // =====================================================
+        // 20 TOTAL PHYSICAL ATTACK DAMAGE
+        //
+        // Netherite Shovel normally has 5 attack damage.
+        // +15 modifier = 20 total damage.
+        // =====================================================
+
+        meta.addAttributeModifier(
+                Attribute.ATTACK_DAMAGE,
+                new AttributeModifier(
+                        attackDamageKey,
+                        15.0,
+                        AttributeModifier.Operation.ADD_NUMBER,
+                        EquipmentSlotGroup.MAINHAND
+                )
         );
 
         item.setItemMeta(meta);
@@ -362,18 +389,12 @@ public class Soulspade extends JavaPlugin {
 
         if (skill.equalsIgnoreCase("dash")) {
 
-            return getRemainingDashCooldown(
-                    uuid
-            );
+            return getRemainingDashCooldown(uuid);
         }
 
-        if (skill.equalsIgnoreCase(
-                "energy-blast"
-        )) {
+        if (skill.equalsIgnoreCase("energy-blast")) {
 
-            return getRemainingEnergyBlastCooldown(
-                    uuid
-            );
+            return getRemainingEnergyBlastCooldown(uuid);
         }
 
         return 0;
