@@ -18,28 +18,42 @@ public class SoulspadeCooldownTask extends BukkitRunnable {
     @Override
     public void run() {
 
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
+        for (Player player :
+                plugin.getServer().getOnlinePlayers()) {
 
-            // Only show Soulspade information while holding it
+            /*
+             * Only show the Soulspade UI while
+             * holding the Soulspade.
+             */
             ItemStack item =
-                    player.getInventory().getItemInMainHand();
+                    player.getInventory()
+                            .getItemInMainHand();
 
             if (!plugin.isSoulspade(item)) {
                 continue;
             }
 
-            UUID uuid = player.getUniqueId();
+            /*
+             * Only the configured owner gets
+             * Soulspade skill information.
+             */
+            if (!plugin.isOwner(player)) {
+                continue;
+            }
+
+            UUID uuid =
+                    player.getUniqueId();
 
             int skill =
                     plugin.getSelectedSkill(uuid);
 
-            if (skill == 1) {
+            /*
+             * ==========================================
+             * DASH
+             * ==========================================
+             */
 
-                double cooldown =
-                        plugin.getConfig().getDouble(
-                                "dash.cooldown",
-                                3.0
-                        );
+            if (skill == 1) {
 
                 long remaining =
                         plugin.getRemainingCooldown(
@@ -69,13 +83,13 @@ public class SoulspadeCooldownTask extends BukkitRunnable {
                     );
                 }
 
-            } else if (skill == 2) {
+            /*
+             * ==========================================
+             * ENERGY BLAST
+             * ==========================================
+             */
 
-                double cooldown =
-                        plugin.getConfig().getDouble(
-                                "energy-blast.cooldown",
-                                5.0
-                        );
+            } else if (skill == 2) {
 
                 long remaining =
                         plugin.getRemainingCooldown(
@@ -105,6 +119,12 @@ public class SoulspadeCooldownTask extends BukkitRunnable {
                     );
                 }
 
+            /*
+             * ==========================================
+             * EXPLOSIVE SNOWBALL
+             * ==========================================
+             */
+
             } else if (skill == 3) {
 
                 player.sendActionBar(
@@ -116,6 +136,12 @@ public class SoulspadeCooldownTask extends BukkitRunnable {
         }
     }
 
+    /*
+     * ==========================================
+     * FORMAT TIME
+     * ==========================================
+     */
+
     private String format(double number) {
 
         return String.format(
@@ -124,6 +150,12 @@ public class SoulspadeCooldownTask extends BukkitRunnable {
                 number
         );
     }
+
+    /*
+     * ==========================================
+     * COLOR
+     * ==========================================
+     */
 
     private String color(String text) {
 
