@@ -2,15 +2,16 @@ package com.soulspade;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.ItemStack;
@@ -30,30 +31,48 @@ public class SoulspadeListener implements Listener {
         this.plugin = plugin;
     }
 
-    // ==========================================
-    // HOTBAR SKILL SELECTOR
-    // ==========================================
+    /*
+     * ==========================================
+     * HOTBAR SKILL SELECTOR
+     * ==========================================
+     *
+     * Slot 1 = Dash
+     * Slot 2 = Energy Blast
+     * Slot 3 = Explosive Snowball
+     *
+     * Slots 4-9 work normally.
+     */
 
     @EventHandler
     public void onHotbarChange(PlayerItemHeldEvent event) {
 
         Player player = event.getPlayer();
 
-        ItemStack currentItem =
-                player.getInventory().getItemInMainHand();
+        ItemStack mainHand =
+                player.getInventory()
+                        .getItemInMainHand();
 
-        // Only use the skill selector while
-        // the player is holding Soulspade.
-        if (!plugin.isSoulspade(currentItem)) {
+        /*
+         * Only activate the selector while
+         * holding Soulspade.
+         */
+        if (!plugin.isSoulspade(mainHand)) {
             return;
         }
 
-        int newSlot = event.getNewSlot();
+        /*
+         * Only the configured owner can use it.
+         */
+        if (!plugin.isOwner(player)) {
+            return;
+        }
 
-        // ==========================================
-        // SLOT 1 = DASH
-        // ==========================================
+        int newSlot =
+                event.getNewSlot();
 
+        /*
+         * Slot 1
+         */
         if (newSlot == 0) {
 
             event.setCancelled(true);
@@ -65,20 +84,23 @@ public class SoulspadeListener implements Listener {
 
             player.sendActionBar(
                     color(
-                            plugin.getConfig().getString(
-                                    "messages.dash-selected",
-                                    "&b⚔ Dash"
-                            )
+                            "&b⚔ Dash &7selected"
                     )
+            );
+
+            player.playSound(
+                    player.getLocation(),
+                    Sound.UI_BUTTON_CLICK,
+                    0.8f,
+                    1.2f
             );
 
             return;
         }
 
-        // ==========================================
-        // SLOT 2 = ENERGY BLAST
-        // ==========================================
-
+        /*
+         * Slot 2
+         */
         if (newSlot == 1) {
 
             event.setCancelled(true);
@@ -90,20 +112,23 @@ public class SoulspadeListener implements Listener {
 
             player.sendActionBar(
                     color(
-                            plugin.getConfig().getString(
-                                    "messages.energy-selected",
-                                    "&b⚡ Energy Blast"
-                            )
+                            "&b⚡ Energy Blast &7selected"
                     )
+            );
+
+            player.playSound(
+                    player.getLocation(),
+                    Sound.UI_BUTTON_CLICK,
+                    0.8f,
+                    1.4f
             );
 
             return;
         }
 
-        // ==========================================
-        // SLOT 3 = EXPLOSIVE SNOWBALL
-        // ==========================================
-
+        /*
+         * Slot 3
+         */
         if (newSlot == 2) {
 
             event.setCancelled(true);
@@ -115,10 +140,61 @@ public class SoulspadeListener implements Listener {
 
             player.sendActionBar(
                     color(
-                            plugin.getConfig().getString(
-                                    "messages.snowball-selected",
-                                    "&f❄ Explosive Snowball"
-                            )
+                            "&f❄ Explosive Snowball &7selected"
+                    )
+            );
+
+            player.playSound(
+                    player.getLocation(),
+                    Sound.UI_BUTTON_CLICK,
+                    0.8f,
+                    1.6f
+            );
+        }
+
+        /*
+         * Slots 4-9 are not cancelled.
+         * The player can switch normally.
+         */
+    }
+
+    /*
+     * ==========================================
+     * RIGHT CLICK
+     * ==========================================
+     */
+
+    @EventHandler
+    public void onRightClick(PlayerInteractEvent event) {
+
+        Action action =
+                event.getAction();
+
+        if (action != Action.RIGHT_CLICK_AIR &&
+                action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+
+        Player player =
+                event.getPlayer();
+
+        ItemStack item =
+                event.getItem();
+
+        if (!plugin.isSoulspade(item)) {
+            return;
+        }
+
+        /*
+         * Only owner can use the weapon.
+         */
+        if (!plugin.isOwner(player)) {
+
+            event.setCancelled(true);
+
+            player.sendActionBar(
+                    color(
+                            "&cYou are not the owner of the Soulspade."
                     )
             );
 
@@ -126,78 +202,65 @@ public class SoulspadeListener implements Listener {
         }
 
         /*
-         * Slots 4-9 work normally.
-         * This lets the player switch away from
-         * Soulspade.
+         * Prevent shovel interaction.
          */
-    }
-
-    // ==========================================
-    // RIGHT CLICK = CAST SELECTED SKILL
-    // ==========================================
-
-    @EventHandler
-    public void onRightClick(
-            PlayerInteractEvent event
-    ) {
-
-        if (event.getAction() != Action.RIGHT_CLICK_AIR &&
-                event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-
-        Player player = event.getPlayer();
-
-        // Must be holding Soulspade.
-        if (!plugin.isSoulspade(
-                player.getInventory().getItemInMainHand()
-        )) {
-            return;
-        }
-
-        UUID uuid =
-                player.getUniqueId();
+        event.setCancelled(true);
 
         int skill =
-                plugin.getSelectedSkill(uuid);
+                plugin.getSelectedSkill(
+                        player.getUniqueId()
+                );
 
         if (skill == 1) {
 
-            dash(player);
+            useDash(player);
 
         } else if (skill == 2) {
 
-            energyBlast(player);
+            useEnergyBlast(player);
 
         } else if (skill == 3) {
 
-            explosiveSnowball(player);
+            useExplosiveSnowball(player);
         }
     }
 
-    // ==========================================
-    // SKILL 1 - DASH
-    // ==========================================
+    /*
+     * ==========================================
+     * DASH
+     * ==========================================
+     */
 
-    private void dash(Player player) {
+    private void useDash(Player player) {
 
         if (!plugin.getConfig().getBoolean(
                 "dash.enabled",
                 true
         )) {
 
-            sendDisabledMessage(player);
+            sendMessage(
+                    player,
+                    "messages.skill-disabled"
+            );
+
             return;
         }
 
         UUID uuid =
                 player.getUniqueId();
 
-        // Check the SAME cooldown used by
-        // SoulspadeCooldownTask.
-        if (plugin.getRemainingDashCooldown(uuid) > 0) {
+        long remaining =
+                plugin.getRemainingDashCooldown(
+                        uuid
+                );
 
-            sendCooldownMessage(player);
+        if (remaining > 0) {
+
+            sendCooldownMessage(
+                    player,
+                    remaining
+            );
+
             return;
         }
 
@@ -213,28 +276,28 @@ public class SoulspadeListener implements Listener {
                         4.0
                 );
 
-        // Start the shared cooldown.
+        /*
+         * Start cooldown immediately.
+         */
         plugin.startDashCooldown(uuid);
 
         Location start =
                 player.getLocation().clone();
 
         Vector direction =
-                player.getLocation()
-                        .getDirection()
+                start.getDirection()
                         .normalize();
 
-        Set<UUID> hitTargets =
+        double actualDistance = 0.0;
+
+        Set<UUID> hitEntities =
                 new HashSet<>();
 
-        double actualDistance = 0;
-
-        // ==========================================
-        // DASH PATH
-        // ==========================================
-
+        /*
+         * Move in 0.5 block increments.
+         */
         for (
-                double distance = 0;
+                double distance = 0.5;
                 distance <= range;
                 distance += 0.5
         ) {
@@ -245,49 +308,53 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
-            // Don't dash through solid blocks.
-            if (location.getBlock()
-                    .getType()
-                    .isSolid()) {
-
+            /*
+             * Stop if a solid block is reached.
+             */
+            if (location.getBlock().getType()
+                    != Material.AIR &&
+                    !location.getBlock()
+                            .isPassable()) {
                 break;
             }
 
-            actualDistance = distance;
-
-            // ==========================================
-            // TRAIL PARTICLES
-            // ==========================================
-
+            /*
+             * Particle trail.
+             */
             if (plugin.getConfig().getBoolean(
                     "dash.particles.enabled",
                     true
             )) {
 
-                spawnParticle(
-                        location,
+                String particleName =
                         plugin.getConfig().getString(
                                 "dash.particles.trail",
                                 "SOUL"
-                        ),
+                        );
+
+                int amount =
                         plugin.getConfig().getInt(
                                 "dash.particles.amount",
                                 8
-                        )
+                        );
+
+                spawnParticle(
+                        location,
+                        particleName,
+                        amount
                 );
             }
 
-            // ==========================================
-            // HIT ENTITIES
-            // ==========================================
-
+            /*
+             * Detect nearby entities.
+             */
             for (Entity entity :
                     location.getWorld()
                             .getNearbyEntities(
                                     location,
-                                    1.2,
-                                    1.2,
-                                    1.2
+                                    1.0,
+                                    1.0,
+                                    1.0
                             )) {
 
                 if (!(entity instanceof LivingEntity target)) {
@@ -298,18 +365,23 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                // Only hit each target once.
-                if (hitTargets.contains(
+                /*
+                 * Prevent hitting the same target
+                 * multiple times.
+                 */
+                if (hitEntities.contains(
                         target.getUniqueId()
                 )) {
                     continue;
                 }
 
-                hitTargets.add(
+                hitEntities.add(
                         target.getUniqueId()
                 );
 
-                // Damage
+                /*
+                 * Damage.
+                 */
                 if (damage > 0) {
 
                     target.damage(
@@ -318,21 +390,73 @@ public class SoulspadeListener implements Listener {
                     );
                 }
 
-                // Slowness
-                applyConfiguredEffect(
-                        target,
-                        "dash.effects.slowness",
-                        PotionEffectType.SLOWNESS
-                );
+                /*
+                 * Slowness.
+                 */
+                if (plugin.getConfig().getBoolean(
+                        "dash.effects.slowness.enabled",
+                        true
+                )) {
 
-                // Weakness
-                applyConfiguredEffect(
-                        target,
-                        "dash.effects.weakness",
-                        PotionEffectType.WEAKNESS
-                );
+                    int duration =
+                            plugin.getConfig().getInt(
+                                    "dash.effects.slowness.duration",
+                                    5
+                            );
 
-                // Hit particles
+                    int amplifier =
+                            plugin.getConfig().getInt(
+                                    "dash.effects.slowness.amplifier",
+                                    1
+                            );
+
+                    target.addPotionEffect(
+                            new PotionEffect(
+                                    PotionEffectType.SLOWNESS,
+                                    duration * 20,
+                                    amplifier,
+                                    false,
+                                    true,
+                                    true
+                            )
+                    );
+                }
+
+                /*
+                 * Weakness.
+                 */
+                if (plugin.getConfig().getBoolean(
+                        "dash.effects.weakness.enabled",
+                        true
+                )) {
+
+                    int duration =
+                            plugin.getConfig().getInt(
+                                    "dash.effects.weakness.duration",
+                                    5
+                            );
+
+                    int amplifier =
+                            plugin.getConfig().getInt(
+                                    "dash.effects.weakness.amplifier",
+                                    1
+                            );
+
+                    target.addPotionEffect(
+                            new PotionEffect(
+                                    PotionEffectType.WEAKNESS,
+                                    duration * 20,
+                                    amplifier,
+                                    false,
+                                    true,
+                                    true
+                            )
+                    );
+                }
+
+                /*
+                 * Hit particle.
+                 */
                 target.getWorld().spawnParticle(
                         Particle.SOUL,
                         target.getLocation()
@@ -344,62 +468,85 @@ public class SoulspadeListener implements Listener {
                         0.03
                 );
             }
+
+            actualDistance =
+                    distance;
         }
 
-        // ==========================================
-        // TELEPORT
-        // ==========================================
-
+        /*
+         * Teleport player to the final safe position.
+         */
         Location destination =
                 start.clone().add(
-                        direction.multiply(
-                                actualDistance
-                        )
+                        direction.clone()
+                                .multiply(actualDistance)
                 );
 
-        if (!destination.getBlock()
-                .getType()
-                .isSolid()) {
+        destination.setYaw(
+                player.getLocation().getYaw()
+        );
 
-            player.teleport(destination);
-        }
+        destination.setPitch(
+                player.getLocation().getPitch()
+        );
 
-        // ==========================================
-        // SOUND
-        // ==========================================
+        player.teleport(destination);
 
         player.getWorld().playSound(
                 player.getLocation(),
-                Sound.ENTITY_PLAYER_ATTACK_SWEEP,
+                Sound.ENTITY_ENDERMAN_TELEPORT,
                 1.0f,
-                0.7f
+                1.5f
+        );
+
+        player.getWorld().spawnParticle(
+                Particle.SOUL,
+                player.getLocation()
+                        .add(0, 1, 0),
+                25,
+                0.5,
+                0.8,
+                0.5,
+                0.05
         );
     }
 
-    // ==========================================
-    // SKILL 2 - ENERGY BLAST
-    // ==========================================
+    /*
+     * ==========================================
+     * ENERGY BLAST
+     * ==========================================
+     */
 
-    private void energyBlast(Player player) {
+    private void useEnergyBlast(Player player) {
 
         if (!plugin.getConfig().getBoolean(
                 "energy-blast.enabled",
                 true
         )) {
 
-            sendDisabledMessage(player);
+            sendMessage(
+                    player,
+                    "messages.skill-disabled"
+            );
+
             return;
         }
 
         UUID uuid =
                 player.getUniqueId();
 
-        // Shared cooldown.
-        if (plugin.getRemainingEnergyBlastCooldown(
-                uuid
-        ) > 0) {
+        long remaining =
+                plugin.getRemainingEnergyBlastCooldown(
+                        uuid
+                );
 
-            sendCooldownMessage(player);
+        if (remaining > 0) {
+
+            sendCooldownMessage(
+                    player,
+                    remaining
+            );
+
             return;
         }
 
@@ -421,25 +568,25 @@ public class SoulspadeListener implements Listener {
                         1.0
                 );
 
-        // Start shared cooldown.
         plugin.startEnergyBlastCooldown(uuid);
 
         Location start =
-                player.getEyeLocation();
+                player.getEyeLocation().clone();
 
         Vector direction =
                 start.getDirection()
                         .normalize();
 
-        Set<UUID> hitTargets =
+        Set<UUID> hitEntities =
                 new HashSet<>();
 
-        // ==========================================
-        // ENERGY BEAM
-        // ==========================================
+        double actualDistance = 0.0;
 
+        /*
+         * Beam.
+         */
         for (
-                double distance = 0.5;
+                double distance = 0.25;
                 distance <= range;
                 distance += 0.25
         ) {
@@ -450,49 +597,65 @@ public class SoulspadeListener implements Listener {
                                     .multiply(distance)
                     );
 
-            // Stop at walls.
-            if (location.getBlock()
-                    .getType()
-                    .isSolid()) {
+            /*
+             * Stop at solid blocks.
+             */
+            if (location.getBlock().getType()
+                    != Material.AIR &&
+                    !location.getBlock()
+                            .isPassable()) {
 
                 break;
             }
 
-            // ==========================================
-            // BEAM PARTICLES
-            // ==========================================
+            actualDistance =
+                    distance;
 
+            /*
+             * Beam particles.
+             */
             if (plugin.getConfig().getBoolean(
                     "energy-blast.particles.enabled",
                     true
             )) {
 
-                spawnParticle(
-                        location,
+                String primary =
                         plugin.getConfig().getString(
                                 "energy-blast.particles.primary",
                                 "END_ROD"
-                        ),
+                        );
+
+                String secondary =
+                        plugin.getConfig().getString(
+                                "energy-blast.particles.secondary",
+                                "SOUL_FIRE_FLAME"
+                        );
+
+                int amount =
                         plugin.getConfig().getInt(
                                 "energy-blast.particles.amount",
                                 10
-                        )
+                        );
+
+                spawnParticle(
+                        location,
+                        primary,
+                        amount
                 );
 
                 spawnParticle(
                         location,
-                        plugin.getConfig().getString(
-                                "energy-blast.particles.secondary",
-                                "SOUL_FIRE_FLAME"
-                        ),
-                        4
+                        secondary,
+                        Math.max(
+                                1,
+                                amount / 2
+                        )
                 );
             }
 
-            // ==========================================
-            // DAMAGE
-            // ==========================================
-
+            /*
+             * Detect targets.
+             */
             for (Entity entity :
                     location.getWorld()
                             .getNearbyEntities(
@@ -510,17 +673,22 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                // Only damage each target once.
-                if (hitTargets.contains(
+                /*
+                 * Only hit each target once.
+                 */
+                if (hitEntities.contains(
                         target.getUniqueId()
                 )) {
                     continue;
                 }
 
-                hitTargets.add(
+                hitEntities.add(
                         target.getUniqueId()
                 );
 
+                /*
+                 * Damage.
+                 */
                 if (damage > 0) {
 
                     target.damage(
@@ -529,51 +697,77 @@ public class SoulspadeListener implements Listener {
                     );
                 }
 
-                // Impact particles
-                target.getWorld().spawnParticle(
-                        Particle.EXPLOSION,
-                        target.getLocation()
-                                .add(0, 1, 0),
-                        1
-                );
-
+                /*
+                 * Impact particles.
+                 */
                 target.getWorld().spawnParticle(
                         Particle.END_ROD,
                         target.getLocation()
                                 .add(0, 1, 0),
-                        20,
+                        25,
                         0.5,
                         0.7,
                         0.5,
                         0.05
                 );
 
-                target.getWorld().playSound(
-                        target.getLocation(),
-                        Sound.ENTITY_GENERIC_EXPLODE,
-                        0.7f,
-                        1.5f
+                target.getWorld().spawnParticle(
+                        Particle.SOUL_FIRE_FLAME,
+                        target.getLocation()
+                                .add(0, 1, 0),
+                        20,
+                        0.4,
+                        0.6,
+                        0.4,
+                        0.02
                 );
             }
         }
 
-        // ==========================================
-        // CAST SOUND
-        // ==========================================
+        /*
+         * Final impact.
+         */
+        Location impact =
+                start.clone().add(
+                        direction.clone()
+                                .multiply(actualDistance)
+                );
 
-        player.getWorld().playSound(
-                player.getLocation(),
-                Sound.ENTITY_EVOKER_CAST_SPELL,
-                1.0f,
-                1.2f
+        impact.getWorld().spawnParticle(
+                Particle.EXPLOSION,
+                impact,
+                1,
+                0,
+                0,
+                0,
+                0
+        );
+
+        impact.getWorld().spawnParticle(
+                Particle.SOUL_FIRE_FLAME,
+                impact,
+                35,
+                0.7,
+                0.7,
+                0.7,
+                0.04
+        );
+
+        impact.getWorld().playSound(
+                impact,
+                Sound.ENTITY_GENERIC_EXPLODE,
+                0.8f,
+                1.8f
         );
     }
 
-    // ==========================================
-    // SKILL 3 - EXPLOSIVE SNOWBALL
-    // ==========================================
+    /*
+     * ==========================================
+     * EXPLOSIVE SNOWBALL
+     * ==========================================
+     */
 
-    private void explosiveSnowball(
+    private void useExplosiveSnowball(
             Player player
     ) {
 
@@ -582,17 +776,20 @@ public class SoulspadeListener implements Listener {
                 true
         )) {
 
-            sendDisabledMessage(player);
+            sendMessage(
+                    player,
+                    "messages.skill-disabled"
+            );
+
             return;
         }
 
         /*
          * No cooldown.
          */
-
-        Snowball snowball =
+        var snowball =
                 player.launchProjectile(
-                        Snowball.class
+                        org.bukkit.entity.Snowball.class
                 );
 
         snowball.setCustomName(
@@ -601,59 +798,32 @@ public class SoulspadeListener implements Listener {
 
         snowball.setCustomNameVisible(false);
 
-        // Throw sound
         player.getWorld().playSound(
                 player.getLocation(),
                 Sound.ENTITY_SNOWBALL_THROW,
-                0.8f,
-                0.8f
+                1.0f,
+                1.2f
+        );
+
+        /*
+         * Small launch particles.
+         */
+        player.getWorld().spawnParticle(
+                Particle.SNOWFLAKE,
+                player.getEyeLocation(),
+                12,
+                0.2,
+                0.2,
+                0.2,
+                0.02
         );
     }
 
-    // ==========================================
-    // CONFIGURED EFFECT
-    // ==========================================
-
-    private void applyConfiguredEffect(
-            LivingEntity target,
-            String path,
-            PotionEffectType type
-    ) {
-
-        boolean enabled =
-                plugin.getConfig().getBoolean(
-                        path + ".enabled",
-                        true
-                );
-
-        if (!enabled) {
-            return;
-        }
-
-        int duration =
-                plugin.getConfig().getInt(
-                        path + ".duration",
-                        5
-                );
-
-        int amplifier =
-                plugin.getConfig().getInt(
-                        path + ".amplifier",
-                        1
-                );
-
-        target.addPotionEffect(
-                new PotionEffect(
-                        type,
-                        duration * 20,
-                        amplifier
-                )
-        );
-    }
-
-    // ==========================================
-    // PARTICLE HELPER
-    // ==========================================
+    /*
+     * ==========================================
+     * PARTICLE HELPER
+     * ==========================================
+     */
 
     private void spawnParticle(
             Location location,
@@ -672,10 +842,10 @@ public class SoulspadeListener implements Listener {
                     particle,
                     location,
                     amount,
-                    0.15,
-                    0.15,
-                    0.15,
-                    0.02
+                    0.08,
+                    0.08,
+                    0.08,
+                    0.01
             );
 
         } catch (IllegalArgumentException ignored) {
@@ -687,41 +857,55 @@ public class SoulspadeListener implements Listener {
         }
     }
 
-    // ==========================================
-    // MESSAGES
-    // ==========================================
+    /*
+     * ==========================================
+     * MESSAGES
+     * ==========================================
+     */
 
-    private void sendDisabledMessage(
-            Player player
+    private void sendMessage(
+            Player player,
+            String path
     ) {
 
+        String message =
+                plugin.getConfig().getString(
+                        path,
+                        "&cThis skill is currently disabled."
+                );
+
         player.sendMessage(
-                color(
-                        plugin.getConfig().getString(
-                                "messages.skill-disabled",
-                                "&cThis skill is currently disabled."
-                        )
-                )
+                color(message)
         );
     }
 
     private void sendCooldownMessage(
-            Player player
+            Player player,
+            long remaining
     ) {
 
-        player.sendMessage(
+        double seconds =
+                remaining / 1000.0;
+
+        String message =
+                plugin.getConfig().getString(
+                        "messages.cooldown",
+                        "&cSkill is on cooldown!"
+                );
+
+        player.sendActionBar(
                 color(
-                        plugin.getConfig().getString(
-                                "messages.cooldown",
-                                "&cSkill is on cooldown!"
-                        )
+                        message
+                                + " &7("
+                                + String.format(
+                                        java.util.Locale.US,
+                                        "%.1f",
+                                        seconds
+                                )
+                                + "s)"
                 )
         );
     }
-
-    // ==========================================
-    // COLOR
-    // ==========================================
 
     private String color(String text) {
 
