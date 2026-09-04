@@ -1,11 +1,11 @@
 package com.soulspade;
 
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -17,18 +17,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class Soulspade extends JavaPlugin implements CommandExecutor {
+public class Soulspade extends JavaPlugin {
 
     private NamespacedKey soulspadeKey;
 
-    private final Map<UUID, Integer> selectedSkills =
-            new HashMap<>();
-
-    private final Map<UUID, Long> dashCooldown =
-            new HashMap<>();
-
-    private final Map<UUID, Long> energyBlastCooldown =
-            new HashMap<>();
+    private final Map<UUID, Integer> selectedSkills = new HashMap<>();
+    private final Map<UUID, Long> dashCooldown = new HashMap<>();
+    private final Map<UUID, Long> energyBlastCooldown = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -36,16 +31,12 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         saveDefaultConfig();
         reloadConfig();
 
-        soulspadeKey =
-                new NamespacedKey(
-                        this,
-                        "soulspade"
-                );
+        soulspadeKey = new NamespacedKey(
+                this,
+                "soulspade"
+        );
 
-        if (getCommand("soulspade") != null) {
-            getCommand("soulspade")
-                    .setExecutor(this);
-        }
+        registerSoulspadeCommands();
 
         getServer().getPluginManager().registerEvents(
                 new SoulspadeListener(this),
@@ -86,11 +77,74 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         );
     }
 
-    /*
-     * ==========================================
-     * OWNER SYSTEM
-     * ==========================================
-     */
+    // =========================================================
+    // COMMANDS
+    // =========================================================
+
+    private void registerSoulspadeCommands() {
+
+        BasicCommand command = this::executeSoulspadeCommand;
+
+        registerCommand(
+                "soulspade",
+                command
+        );
+
+        registerCommand(
+                "ss",
+                command
+        );
+
+        getLogger().info(
+                "Registered commands: /soulspade and /ss"
+        );
+    }
+
+    private void executeSoulspadeCommand(
+            CommandSourceStack source,
+            String[] args
+    ) {
+
+        if (!(source.getSender() instanceof Player player)) {
+
+            source.getSender().sendPlainMessage(
+                    "Only players can use this command."
+            );
+
+            return;
+        }
+
+        if (!isOwner(player)) {
+
+            String message = getConfig().getString(
+                    "messages.owner-only",
+                    "&cOnly the Soulspade owner can use this weapon."
+            );
+
+            player.sendMessage(
+                    color(message)
+            );
+
+            return;
+        }
+
+        player.getInventory().addItem(
+                createSoulspade()
+        );
+
+        String message = getConfig().getString(
+                "messages.received",
+                "&bYou received the &3&lSoulspade&b!"
+        );
+
+        player.sendMessage(
+                color(message)
+        );
+    }
+
+    // =========================================================
+    // OWNER
+    // =========================================================
 
     public boolean isOwner(Player player) {
 
@@ -101,14 +155,12 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
             return true;
         }
 
-        String ownerName =
-                getConfig().getString(
-                        "owner.name",
-                        ""
-                );
+        String ownerName = getConfig().getString(
+                "owner.name",
+                ""
+        );
 
-        if (ownerName == null ||
-                ownerName.isBlank()) {
+        if (ownerName == null || ownerName.isBlank()) {
             return false;
         }
 
@@ -116,31 +168,26 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                 .equalsIgnoreCase(ownerName);
     }
 
-    /*
-     * ==========================================
-     * CREATE SOULSPADE
-     * ==========================================
-     */
+    // =========================================================
+    // SOULSPADE ITEM
+    // =========================================================
 
     public ItemStack createSoulspade() {
 
-        ItemStack item =
-                new ItemStack(
-                        Material.NETHERITE_SHOVEL
-                );
+        ItemStack item = new ItemStack(
+                Material.NETHERITE_SHOVEL
+        );
 
-        ItemMeta meta =
-                item.getItemMeta();
+        ItemMeta meta = item.getItemMeta();
 
         if (meta == null) {
             return item;
         }
 
-        String configuredName =
-                getConfig().getString(
-                        "weapon.name",
-                        "&3&lSoulspade"
-                );
+        String configuredName = getConfig().getString(
+                "weapon.name",
+                "&3&lSoulspade"
+        );
 
         meta.setDisplayName(
                 color(configuredName)
@@ -175,20 +222,13 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         return item;
     }
 
-    /*
-     * ==========================================
-     * CHECK SOULSPADE
-     * ==========================================
-     */
-
     public boolean isSoulspade(ItemStack item) {
 
         if (item == null) {
             return false;
         }
 
-        if (item.getType()
-                != Material.NETHERITE_SHOVEL) {
+        if (item.getType() != Material.NETHERITE_SHOVEL) {
             return false;
         }
 
@@ -204,11 +244,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                 );
     }
 
-    /*
-     * ==========================================
-     * SKILL SELECTION
-     * ==========================================
-     */
+    // =========================================================
+    // SKILL SELECTION
+    // =========================================================
 
     public int getSelectedSkill(UUID uuid) {
 
@@ -233,11 +271,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         );
     }
 
-    /*
-     * ==========================================
-     * DASH COOLDOWN
-     * ==========================================
-     */
+    // =========================================================
+    // DASH COOLDOWN
+    // =========================================================
 
     public void startDashCooldown(UUID uuid) {
 
@@ -247,15 +283,12 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         );
     }
 
-    public long getRemainingDashCooldown(
-            UUID uuid
-    ) {
+    public long getRemainingDashCooldown(UUID uuid) {
 
-        double cooldown =
-                getConfig().getDouble(
-                        "dash.cooldown",
-                        3.0
-                );
+        double cooldown = getConfig().getDouble(
+                "dash.cooldown",
+                3.0
+        );
 
         return getRemainingTime(
                 dashCooldown,
@@ -264,15 +297,11 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         );
     }
 
-    /*
-     * ==========================================
-     * ENERGY BLAST COOLDOWN
-     * ==========================================
-     */
+    // =========================================================
+    // ENERGY BLAST COOLDOWN
+    // =========================================================
 
-    public void startEnergyBlastCooldown(
-            UUID uuid
-    ) {
+    public void startEnergyBlastCooldown(UUID uuid) {
 
         energyBlastCooldown.put(
                 uuid,
@@ -284,11 +313,10 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
             UUID uuid
     ) {
 
-        double cooldown =
-                getConfig().getDouble(
-                        "energy-blast.cooldown",
-                        5.0
-                );
+        double cooldown = getConfig().getDouble(
+                "energy-blast.cooldown",
+                5.0
+        );
 
         return getRemainingTime(
                 energyBlastCooldown,
@@ -297,11 +325,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         );
     }
 
-    /*
-     * ==========================================
-     * GENERIC COOLDOWN
-     * ==========================================
-     */
+    // =========================================================
+    // COOLDOWN CALCULATOR
+    // =========================================================
 
     private long getRemainingTime(
             Map<UUID, Long> cooldowns,
@@ -318,9 +344,7 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                         - cooldowns.get(uuid);
 
         long cooldownMillis =
-                (long) (
-                        cooldownSeconds * 1000
-                );
+                (long) (cooldownSeconds * 1000);
 
         long remaining =
                 cooldownMillis - elapsed;
@@ -355,77 +379,9 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
         return 0;
     }
 
-    /*
-     * ==========================================
-     * SOULSPADE COMMAND
-     * ==========================================
-     */
-
-    @Override
-    public boolean onCommand(
-            CommandSender sender,
-            Command command,
-            String label,
-            String[] args
-    ) {
-
-        if (!(sender instanceof Player player)) {
-
-            sender.sendMessage(
-                    "Only players can use this command."
-            );
-
-            return true;
-        }
-
-        /*
-         * ONLY THE OWNER CAN USE /SOULSPADE
-         *
-         * This check happens BEFORE the
-         * permission check.
-         */
-        if (!isOwner(player)) {
-
-            String message =
-                    getConfig().getString(
-                            "messages.owner-only",
-                            "&cOnly the Soulspade owner can use this weapon."
-                    );
-
-            player.sendMessage(
-                    color(message)
-            );
-
-            return true;
-        }
-
-        /*
-         * OWNER DOES NOT NEED OP OR
-         * soulspade.use PERMISSION.
-         */
-
-        player.getInventory().addItem(
-                createSoulspade()
-        );
-
-        String message =
-                getConfig().getString(
-                        "messages.received",
-                        "&bYou received the &3&lSoulspade&b!"
-                );
-
-        player.sendMessage(
-                color(message)
-        );
-
-        return true;
-    }
-
-    /*
-     * ==========================================
-     * COLOR
-     * ==========================================
-     */
+    // =========================================================
+    // UTILITIES
+    // =========================================================
 
     private String color(String text) {
 
@@ -434,12 +390,6 @@ public class Soulspade extends JavaPlugin implements CommandExecutor {
                 text
         );
     }
-
-    /*
-     * ==========================================
-     * GET SOULSPADE KEY
-     * ==========================================
-     */
 
     public NamespacedKey getSoulspadeKey() {
 
