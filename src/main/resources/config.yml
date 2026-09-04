@@ -14,16 +14,38 @@ owner:
   name: "Jayymalapoks"
 
 # ==========================================
+# COMBAT
+# ==========================================
+
+combat:
+
+  # Total physical attack damage
+  attack-damage: 20.0
+
+  # 20% of actual damage dealt is returned as HP
+  lifesteal-percent: 20.0
+
+  # Show heart particles when lifesteal activates
+  lifesteal-particles: true
+
+  # Play sound when lifesteal activates
+  lifesteal-sound: true
+
+# ==========================================
 # Skill 1 - Dash
 # ==========================================
 
 dash:
   enabled: true
+
   range: 10.0
+
   cooldown: 3.0
+
   damage: 4.0
 
   effects:
+
     slowness:
       enabled: true
       duration: 5
@@ -45,10 +67,15 @@ dash:
 
 energy-blast:
   enabled: true
+
   range: 7.0
+
   cooldown: 5.0
+
   damage: 15.0
-  hit-radius: 1.0
+
+  # Bigger hitbox
+  hit-radius: 1.5
 
   particles:
     enabled: true
@@ -62,19 +89,28 @@ energy-blast:
 
 explosive-snowball:
   enabled: true
+
   damage: 3.0
+
   radius: 3.0
+
   break-blocks: false
+
   cooldown: 0.0
 
   particles:
     enabled: true
+
     explosion: "EXPLOSION"
+
     primary: "SOUL_FIRE_FLAME"
+
     secondary: "END_ROD"
 
     explosion-amount: 3
+
     primary-amount: 35
+
     secondary-amount: 20
 
 # ==========================================
@@ -82,10 +118,17 @@ explosive-snowball:
 # ==========================================
 
 messages:
+
   received: "&bYou received the &3&lSoulspade&b!"
+
   owner-only: "&cOnly the Soulspade owner can use this weapon."
+
   dash-selected: "&b⚔ Dash"
+
   energy-selected: "&b⚡ Energy Blast"
+
   snowball-selected: "&f❄ Explosive Snowball"
+
   skill-disabled: "&cThis skill is currently disabled."
+
   cooldown: "&cSkill is on cooldown!"
