@@ -4,7 +4,6 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -36,7 +35,7 @@ public class SoulspadeListener implements Listener {
     }
 
     // =========================================================
-    // NORMAL ATTACK + SKILL LIFESTEAL
+    // LIFESTEAL
     // =========================================================
 
     @EventHandler(
@@ -53,12 +52,10 @@ public class SoulspadeListener implements Listener {
 
         Player attacker = null;
 
-        // Normal melee attack
         if (event.getDamager() instanceof Player player) {
             attacker = player;
         }
 
-        // Explosive Snowball
         else if (event.getDamager() instanceof Snowball snowball) {
 
             if (!"Soulspade Explosive Snowball".equals(
@@ -80,11 +77,6 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        // For normal attacks and Dash/Energy Blast,
-        // Soulspade must be in the main hand.
-        //
-        // Snowball is allowed even if the player switched
-        // items after throwing it.
         boolean snowball =
                 event.getDamager() instanceof Snowball;
 
@@ -115,7 +107,7 @@ public class SoulspadeListener implements Listener {
 
         healLifesteal(
                 attacker,
-                damage * (percent / 100.0)
+                damage * percent / 100.0
         );
     }
 
@@ -130,7 +122,7 @@ public class SoulspadeListener implements Listener {
 
         var maxHealth =
                 player.getAttribute(
-                        Attribute.MAX_HEALTH
+                        org.bukkit.attribute.Attribute.MAX_HEALTH
                 );
 
         if (maxHealth == null) {
@@ -156,25 +148,12 @@ public class SoulspadeListener implements Listener {
             player.getWorld().spawnParticle(
                     Particle.HEART,
                     player.getLocation()
-                            .add(0, 2.0, 0),
+                            .add(0, 2, 0),
                     3,
                     0.25,
                     0.25,
                     0.25,
                     0.02
-            );
-        }
-
-        if (plugin.getConfig().getBoolean(
-                "combat.lifesteal-sound",
-                true
-        )) {
-
-            player.getWorld().playSound(
-                    player.getLocation(),
-                    Sound.ENTITY_PLAYER_LEVELUP,
-                    0.25f,
-                    2.0f
             );
         }
     }
@@ -194,18 +173,16 @@ public class SoulspadeListener implements Listener {
             return;
         }
 
-        ItemStack mainHand =
+        if (!plugin.isSoulspade(
                 player.getInventory()
-                        .getItemInMainHand();
-
-        if (!plugin.isSoulspade(mainHand)) {
+                        .getItemInMainHand()
+        )) {
             return;
         }
 
-        int newSlot =
-                event.getNewSlot();
+        int slot = event.getNewSlot();
 
-        if (newSlot == 0) {
+        if (slot == 0) {
 
             event.setCancelled(true);
 
@@ -220,10 +197,7 @@ public class SoulspadeListener implements Listener {
                     "&b⚔ Dash"
             );
 
-            return;
-        }
-
-        if (newSlot == 1) {
+        } else if (slot == 1) {
 
             event.setCancelled(true);
 
@@ -238,10 +212,7 @@ public class SoulspadeListener implements Listener {
                     "&b⚡ Energy Blast"
             );
 
-            return;
-        }
-
-        if (newSlot == 2) {
+        } else if (slot == 2) {
 
             event.setCancelled(true);
 
@@ -307,47 +278,39 @@ public class SoulspadeListener implements Listener {
                         player.getUniqueId()
                 );
 
-        if (skill == 1) {
+        switch (skill) {
 
-            useDash(player);
+            case 1 -> useDash(player);
 
-        } else if (skill == 2) {
+            case 2 -> useEnergyBlast(player);
 
-            useEnergyBlast(player);
-
-        } else if (skill == 3) {
-
-            useExplosiveSnowball(player);
+            case 3 -> useExplosiveSnowball(player);
         }
     }
 
     // =========================================================
-    // DASH
+    // PUNISHMENT OF THE PROUD STYLE DASH
     // =========================================================
 
-    private void useDash(
-            Player player
-    ) {
+    private void useDash(Player player) {
 
         if (!plugin.getConfig().getBoolean(
                 "dash.enabled",
                 true
         )) {
-
             player.sendActionBar(
                     "§cDash is disabled."
             );
-
             return;
         }
 
         UUID uuid =
                 player.getUniqueId();
 
-        long remaining =
+        long cooldown =
                 plugin.getRemainingDashCooldown(uuid);
 
-        if (remaining > 0) {
+        if (cooldown > 0) {
 
             player.sendActionBar(
                     "§cDash is on cooldown!"
@@ -372,55 +335,56 @@ public class SoulspadeListener implements Listener {
                 player.getLocation().clone();
 
         Vector direction =
-                start.getDirection().normalize();
+                player.getLocation()
+                        .getDirection()
+                        .normalize();
 
-        direction.setY(
-                Math.max(
-                        direction.getY(),
-                        -0.15
-                )
-        );
-
-        direction.normalize();
+        // Don't allow the dash to force the player downward.
+        if (direction.getY() < -0.25) {
+            direction.setY(-0.25);
+            direction.normalize();
+        }
 
         Location destination =
                 start.clone();
 
-        LivingEntity hitTarget = null;
+        LivingEntity targetHit = null;
 
-        double step = 0.25;
+        // =====================================================
+        // FIND TARGET FIRST
+        // =====================================================
 
         for (
-                double distance = 0;
+                double distance = 0.25;
                 distance <= range;
-                distance += step
+                distance += 0.15
         ) {
 
-            Location point =
+            Location check =
                     start.clone().add(
                             direction.clone()
                                     .multiply(distance)
                     );
 
             Block block =
-                    point.getBlock();
+                    check.getBlock();
 
             if (!block.isPassable()) {
                 break;
             }
 
-            destination = point;
+            destination =
+                    check.clone();
 
-            spawnDashParticle(point);
-
+            // Large combat hitbox.
             for (
                     Entity entity :
-                    point.getWorld()
+                    check.getWorld()
                             .getNearbyEntities(
-                                    point,
-                                    0.8,
-                                    1.0,
-                                    0.8
+                                    check,
+                                    1.35,
+                                    1.35,
+                                    1.35
                             )
             ) {
 
@@ -432,163 +396,257 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                hitTarget = target;
+                if (target.isDead()) {
+                    continue;
+                }
+
+                targetHit = target;
                 break;
             }
 
-            if (hitTarget != null) {
+            if (targetHit != null) {
                 break;
             }
         }
 
+        // =====================================================
+        // TELEPORT
+        // =====================================================
+
         destination.setYaw(
-                player.getLocation().getYaw()
+                start.getYaw()
         );
 
         destination.setPitch(
-                player.getLocation().getPitch()
+                start.getPitch()
         );
 
         player.teleport(destination);
 
-        player.getWorld().playSound(
-                destination,
+        // =====================================================
+        // DASH EFFECT
+        // =====================================================
+
+        World world =
+                player.getWorld();
+
+        world.playSound(
+                player.getLocation(),
                 Sound.ENTITY_ENDERMAN_TELEPORT,
                 1.0f,
                 1.5f
         );
 
-        if (hitTarget != null && damage > 0) {
-
-            hitTarget.damage(
-                    damage,
-                    player
-            );
-
-            applyDashEffects(
-                    hitTarget
-            );
-
-            hitTarget.getWorld().spawnParticle(
-                    Particle.SOUL,
-                    hitTarget.getLocation()
-                            .add(0, 1, 0),
-                    20,
-                    0.4,
-                    0.7,
-                    0.4,
-                    0.05
-            );
-        }
-
-        player.getWorld().spawnParticle(
+        world.spawnParticle(
                 Particle.SOUL,
-                destination.clone()
-                        .add(0, 1, 0),
-                15,
+                start.clone().add(0, 1, 0),
+                20,
                 0.4,
-                0.6,
+                0.7,
                 0.4,
                 0.03
         );
 
+        world.spawnParticle(
+                Particle.SOUL_FIRE_FLAME,
+                destination.clone().add(0, 1, 0),
+                30,
+                0.5,
+                0.8,
+                0.5,
+                0.04
+        );
+
+        // =====================================================
+        // HIT TARGET
+        // =====================================================
+
+        if (targetHit != null) {
+
+            double before =
+                    targetHit.getHealth();
+
+            targetHit.damage(
+                    damage,
+                    player
+            );
+
+            double after =
+                    Math.max(
+                            0,
+                            targetHit.getHealth()
+                    );
+
+            double actualDamage =
+                    Math.max(
+                            0,
+                            before - after
+                    );
+
+            // Lifesteal is handled here too,
+            // so Dash always counts toward lifesteal.
+            if (actualDamage > 0) {
+
+                double percent =
+                        plugin.getConfig().getDouble(
+                                "combat.lifesteal-percent",
+                                20.0
+                        );
+
+                healPlayer(
+                        player,
+                        actualDamage * percent / 100.0
+                );
+            }
+
+            applyDashEffects(
+                    targetHit
+            );
+
+            Location hitLocation =
+                    targetHit.getLocation()
+                            .add(0, 1, 0);
+
+            world.spawnParticle(
+                    Particle.SOUL_FIRE_FLAME,
+                    hitLocation,
+                    35,
+                    0.5,
+                    0.8,
+                    0.5,
+                    0.04
+            );
+
+            world.spawnParticle(
+                    Particle.CRIT,
+                    hitLocation,
+                    20,
+                    0.4,
+                    0.6,
+                    0.4,
+                    0.2
+            );
+
+            world.playSound(
+                    hitLocation,
+                    Sound.ENTITY_PLAYER_ATTACK_STRONG,
+                    1.0f,
+                    0.7f
+            );
+
+            player.sendActionBar(
+                    "§b⚔ DASH HIT §7• §c"
+                            + damage
+                            + " Damage"
+            );
+
+        } else {
+
+            player.sendActionBar(
+                    "§b⚔ DASH"
+            );
+        }
+
         plugin.startDashCooldown(uuid);
     }
+
+    // =========================================================
+    // DASH LIFESTEAL
+    // =========================================================
+
+    private void healPlayer(
+            Player player,
+            double amount
+    ) {
+
+        if (amount <= 0) {
+            return;
+        }
+
+        var maxHealth =
+                player.getAttribute(
+                        org.bukkit.attribute.Attribute.MAX_HEALTH
+                );
+
+        if (maxHealth == null) {
+            return;
+        }
+
+        double max =
+                maxHealth.getValue();
+
+        player.setHealth(
+                Math.min(
+                        player.getHealth() + amount,
+                        max
+                )
+        );
+
+        if (plugin.getConfig().getBoolean(
+                "combat.lifesteal-particles",
+                true
+        )) {
+
+            player.getWorld().spawnParticle(
+                    Particle.HEART,
+                    player.getLocation()
+                            .add(0, 2, 0),
+                    3,
+                    0.25,
+                    0.25,
+                    0.25,
+                    0.02
+            );
+        }
+    }
+
+    // =========================================================
+    // DASH EFFECTS
+    // =========================================================
 
     private void applyDashEffects(
             LivingEntity target
     ) {
 
-        boolean slowness =
-                plugin.getConfig().getBoolean(
-                        "dash.effects.slowness.enabled",
-                        true
-                );
-
-        int slownessDuration =
-                plugin.getConfig().getInt(
-                        "dash.effects.slowness.duration",
-                        5
-                );
-
-        int slownessAmplifier =
-                plugin.getConfig().getInt(
-                        "dash.effects.slowness.amplifier",
-                        1
-                );
-
-        if (slowness) {
+        if (plugin.getConfig().getBoolean(
+                "dash.effects.slowness.enabled",
+                true
+        )) {
 
             target.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.SLOWNESS,
-                            slownessDuration * 20,
-                            slownessAmplifier
+                            plugin.getConfig().getInt(
+                                    "dash.effects.slowness.duration",
+                                    5
+                            ) * 20,
+                            plugin.getConfig().getInt(
+                                    "dash.effects.slowness.amplifier",
+                                    1
+                            )
                     )
             );
         }
 
-        boolean weakness =
-                plugin.getConfig().getBoolean(
-                        "dash.effects.weakness.enabled",
-                        true
-                );
-
-        int weaknessDuration =
-                plugin.getConfig().getInt(
-                        "dash.effects.weakness.duration",
-                        5
-                );
-
-        int weaknessAmplifier =
-                plugin.getConfig().getInt(
-                        "dash.effects.weakness.amplifier",
-                        1
-                );
-
-        if (weakness) {
+        if (plugin.getConfig().getBoolean(
+                "dash.effects.weakness.enabled",
+                true
+        )) {
 
             target.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.WEAKNESS,
-                            weaknessDuration * 20,
-                            weaknessAmplifier
+                            plugin.getConfig().getInt(
+                                    "dash.effects.weakness.duration",
+                                    5
+                            ) * 20,
+                            plugin.getConfig().getInt(
+                                    "dash.effects.weakness.amplifier",
+                                    1
+                            )
                     )
             );
         }
-    }
-
-    private void spawnDashParticle(
-            Location location
-    ) {
-
-        if (!plugin.getConfig().getBoolean(
-                "dash.particles.enabled",
-                true
-        )) {
-            return;
-        }
-
-        World world =
-                location.getWorld();
-
-        if (world == null) {
-            return;
-        }
-
-        world.spawnParticle(
-                Particle.SOUL,
-                location.clone()
-                        .add(0, 0.6, 0),
-                plugin.getConfig().getInt(
-                        "dash.particles.amount",
-                        8
-                ),
-                0.15,
-                0.25,
-                0.15,
-                0.01
-        );
     }
 
     // =========================================================
@@ -603,23 +661,15 @@ public class SoulspadeListener implements Listener {
                 "energy-blast.enabled",
                 true
         )) {
-
-            player.sendActionBar(
-                    "§cEnergy Blast is disabled."
-            );
-
             return;
         }
 
         UUID uuid =
                 player.getUniqueId();
 
-        long remaining =
-                plugin.getRemainingEnergyBlastCooldown(
-                        uuid
-                );
-
-        if (remaining > 0) {
+        if (plugin.getRemainingEnergyBlastCooldown(
+                uuid
+        ) > 0) {
 
             player.sendActionBar(
                     "§cEnergy Blast is on cooldown!"
@@ -640,7 +690,7 @@ public class SoulspadeListener implements Listener {
                         15.0
                 );
 
-        double hitRadius =
+        double radius =
                 plugin.getConfig().getDouble(
                         "energy-blast.hit-radius",
                         1.5
@@ -650,20 +700,19 @@ public class SoulspadeListener implements Listener {
                 player.getEyeLocation();
 
         Vector direction =
-                start.getDirection().normalize();
+                start.getDirection()
+                        .normalize();
 
-        Set<UUID> hitEntities =
+        Set<UUID> hit =
                 new HashSet<>();
 
-        Location finalPoint =
+        Location end =
                 start.clone();
-
-        double step = 0.25;
 
         for (
                 double distance = 0;
                 distance <= range;
-                distance += step
+                distance += 0.20
         ) {
 
             Location point =
@@ -676,7 +725,7 @@ public class SoulspadeListener implements Listener {
                 break;
             }
 
-            finalPoint = point;
+            end = point;
 
             spawnBlastParticles(point);
 
@@ -685,9 +734,9 @@ public class SoulspadeListener implements Listener {
                     point.getWorld()
                             .getNearbyEntities(
                                     point,
-                                    hitRadius,
-                                    hitRadius,
-                                    hitRadius
+                                    radius,
+                                    radius,
+                                    radius
                             )
             ) {
 
@@ -699,22 +748,16 @@ public class SoulspadeListener implements Listener {
                     continue;
                 }
 
-                UUID targetUUID =
-                        target.getUniqueId();
-
-                if (!hitEntities.add(
-                        targetUUID
+                if (!hit.add(
+                        target.getUniqueId()
                 )) {
                     continue;
                 }
 
-                if (damage > 0) {
-
-                    target.damage(
-                            damage,
-                            player
-                    );
-                }
+                target.damage(
+                        damage,
+                        player
+                );
 
                 target.getWorld().spawnParticle(
                         Particle.SOUL_FIRE_FLAME,
@@ -729,9 +772,9 @@ public class SoulspadeListener implements Listener {
             }
         }
 
-        finalPoint.getWorld().spawnParticle(
+        end.getWorld().spawnParticle(
                 Particle.END_ROD,
-                finalPoint,
+                end,
                 35,
                 0.7,
                 0.7,
@@ -739,9 +782,9 @@ public class SoulspadeListener implements Listener {
                 0.08
         );
 
-        finalPoint.getWorld().spawnParticle(
+        end.getWorld().spawnParticle(
                 Particle.SOUL_FIRE_FLAME,
-                finalPoint,
+                end,
                 25,
                 0.5,
                 0.5,
@@ -749,8 +792,8 @@ public class SoulspadeListener implements Listener {
                 0.04
         );
 
-        finalPoint.getWorld().playSound(
-                finalPoint,
+        end.getWorld().playSound(
+                end,
                 Sound.ENTITY_PLAYER_ATTACK_STRONG,
                 1.0f,
                 0.7f
@@ -810,11 +853,6 @@ public class SoulspadeListener implements Listener {
                 "explosive-snowball.enabled",
                 true
         )) {
-
-            player.sendActionBar(
-                    "§cExplosive Snowball is disabled."
-            );
-
             return;
         }
 
@@ -845,7 +883,7 @@ public class SoulspadeListener implements Listener {
     }
 
     // =========================================================
-    // SKILL MESSAGE
+    // MESSAGE
     // =========================================================
 
     private void sendSkillMessage(
